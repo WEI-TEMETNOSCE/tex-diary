@@ -1,0 +1,115 @@
+\ProvidesPackage{diary_base}
+%%%%%%%%% RESEARCH DIARY - BASE FUNCTIONALITY %%%%%%%%%%%%
+%% Complete package setup and document configuration
+%% Combines essential packages, math packages, and document styling
+%% This file provides everything needed for diary entries
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%% ESSENTIAL DOCUMENT PACKAGES
+\usepackage[comma,numbers]{natbib}          % Bibliography management
+\usepackage{fancyhdr}                       % Headers and footers
+\usepackage[utf8]{inputenc}                 % Modern input encoding
+\usepackage[hmargin=2cm,vmargin=2.5cm]{geometry}  % Page margins
+
+%% BASIC MATH PACKAGES
+\usepackage{amsmath}                        % Basic math environments
+\usepackage{amsfonts}                       % Math fonts
+\usepackage{amssymb}                        % Math symbols
+\usepackage{amsthm}                         % Theorem environments (base)
+\usepackage{mathtools}                      % Extended math tools
+
+%% GRAPHICS AND FIGURES
+\usepackage{graphicx}                       % Include graphics
+\usepackage{epsfig}                         % EPS figure support
+\usepackage{wrapfig}                        % Text wrapping around figures
+
+%% TEXT FORMATTING AND COLORS
+\usepackage{textcomp}                       % Text companion fonts
+\PassOptionsToPackage{dvipsnames}{xcolor}   % Ensure compatibility
+\usepackage{xcolor}                         % Enhanced color support
+\usepackage{multirow}                       % Multi-row table cells
+\usepackage[normalem]{ulem}                 % Underline/strikeout (preserves \emph)
+\usepackage{soul}                           % Letter spacing, highlighting
+
+%% ENHANCED FEATURES
+\usepackage{framed}                         % Framed text boxes
+\usepackage{booktabs}                       % Professional tables
+\usepackage{tcolorbox}                      % Colored text boxes
+\usepackage{comment}                        % Comment blocks
+
+%% ALGORITHM SUPPORT
+\usepackage{algorithm}                      % Algorithm typesetting
+\usepackage{algorithmic}                    % Algorithm formatting
+
+%% FRAMED ENVIRONMENTS SUPPORT
+\PassOptionsToPackage{framemethod=TikZ}{mdframed}  % Ensure compatibility
+\usepackage{mdframed}                       % Advanced framed boxes
+\mdfsetup{skipabove=1em,skipbelow=0em}
+
+%% DEVELOPMENT/DEBUG TOOLS
+\usepackage[inner, inline, left]{showlabels}  % Show labels (for development)
+
+%% SPECIALIZED PACKAGES
+\usepackage{scalerel}                       % Scale symbols relative to text
+
+%% HYPERLINKS (with diary-specific settings)
+\definecolor{darkblue}{RGB}{47,68,117}
+\definecolor{lightgray}{gray}{0.95}
+\usepackage{hyperref}
+\hypersetup{
+    pdftitle={Research Diary},
+    pdfauthor={\userName \; (\institution)},
+    pdfsubject={Research Diary},
+    colorlinks=true,
+    linkcolor=darkblue,
+    citecolor=green,
+    filecolor=magenta,
+    urlcolor=blue
+}
+
+%% PAGE LAYOUT SETTINGS
+\pagestyle{fancy}
+\setlength\parindent{0in}
+\setlength\parskip{0.1in} 
+\setlength\headheight{15pt}
+
+%% DEFAULT HEADER/FOOTER (can be overridden)
+\rhead{\workingDate}
+\chead{\textsc{Research Diary}}
+\lhead{\textsc{\userName}}
+\rfoot{\textsc{\thepage}}
+\cfoot{\textit{Last modified: \today}}
+\lfoot{\textsc{\institution}}
+
+%% BASIC THEOREM ENVIRONMENTS (simple, no styling)
+%% For styled theorems, load diary_theorems.sty
+\newtheorem{thm}{Theorem}[section]
+\newtheorem{cor}[thm]{Corollary}
+\newtheorem{mydef}[thm]{Definition}
+\newtheorem{lem}[thm]{Lemma} 
+\newtheorem{fac}[thm]{Fact} 
+\newtheorem{cla}[thm]{Claim} 
+\newtheorem{exa}[thm]{Example} 
+\newtheorem{ass}[thm]{Assumption}
+\newtheorem{pro}[thm]{Proposition}
+
+%% Fix theorem spacing issues
+\begingroup
+    \makeatletter
+    \@for\theoremstyle:=definition,remark,plain\do{%
+        \expandafter\g@addto@macro\csname th@\theoremstyle\endcsname{%
+            \addtolength\thm@preskip\parskip
+            }%
+        }
+\endgroup
+
+%% BASIC FRAMED THEOREM ENVIRONMENTS
+%% These provide simple framing - for colored boxes, use diary_theorems.sty
+\newenvironment{fthm}{\hspace{1\baselineskip}\begin{mdframed}\hspace{-1\baselineskip}\begin{thm}} {\end{thm}\end{mdframed}}
+\newenvironment{flem}{\hspace{1\baselineskip}\begin{mdframed}\hspace{-1\baselineskip}\begin{lem}} {\end{lem}\end{mdframed}}
+\newenvironment{fcor}{\hspace{1\baselineskip}\begin{mdframed}\hspace{-1\baselineskip}\begin{cor}} {\end{cor}\end{mdframed}}
+\newenvironment{fmydef}{\hspace{1\baselineskip}\begin{mdframed}\hspace{-1\baselineskip}\begin{mydef}} {\end{mydef}\end{mdframed}}
+\newenvironment{fcla}{\hspace{1\baselineskip}\begin{mdframed}\hspace{-1\baselineskip}\begin{cla}} {\end{cla}\end{mdframed}}
+\newenvironment{fpro}{\hspace{1\baselineskip}\begin{mdframed}\hspace{-1\baselineskip}\begin{pro}} {\end{pro}\end{mdframed}}
+\newenvironment{ffac}{\hspace{1\baselineskip}\begin{mdframed}\hspace{-1\baselineskip}\begin{fac}} {\end{fac}\end{mdframed}}
+\newenvironment{fexa}{\hspace{1\baselineskip}\begin{mdframed}\hspace{-1\baselineskip}\begin{exa}} {\end{exa}\end{mdframed}}

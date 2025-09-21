@@ -1,0 +1,1118 @@
+#!/usr/bin/env python3
+"""Research Diary System - Simple All-in-One Script"""
+import argparse, sys, logging, os, re, subprocess, shutil
+from datetime import datetime
+from pathlib import Path
+from typing import List, Optional, Dict, Any
+
+def setup_logging(verbose=False):
+    logging.basicConfig(level=logging.DEBUG if verbose else logging.INFO, format='%(levelname)s: %(message)s')
+
+def get_base_dir():
+    return Path(__file__).parent.resolve()
+
+def load_config():
+    base_dir = get_base_dir()
+    config_file = base_dir / "config.md"
+    defaults = {'author': 'Research Student', 'institution': 'University', 'year': datetime.now().year, 'output_dir': 'collections', 'template_dir': 'assets/templates', 'default_editor': 'open'}
+    if not config_file.exists(): return defaults
+    config = defaults.copy()
+    try:
+        with open(config_file, 'r') as f: content = f.read()
+        patterns = {'author': r'\*\*Author Name\*\*:\s*(.+)', 'institution': r'\*\*Institution\*\*:\s*(.+)', 'year': r'\*\*Current Year\*\*:\s*(.+)'}
+        for key, pattern in patterns.items():
+            match = re.search(pattern, content)
+            if match:
+                value = match.group(1).strip()
+                config[key] = datetime.now().year if key == 'year' and value.lower() == 'auto' else (int(value) if key == 'year' else value)
+    except Exception as e: print(f"Warning: Failed to parse config.md: {e}")
+    return config
+
+def setup_assets_directory(base_dir, year):
+    """Set up assets directory structure with single symlink"""
+    assets_dir = base_dir / "assets"
+    posts_year_dir = base_dir / "posts" / str(year)
+    
+    # Create assets directories
+    assets_dir.mkdir(exist_ok=True)
+    (assets_dir / "figures").mkdir(exist_ok=True)
+    (assets_dir / "figures" / str(year)).mkdir(exist_ok=True)
+    (assets_dir / "figures" / "shared").mkdir(exist_ok=True)
+    (assets_dir / "styles").mkdir(exist_ok=True)
+    (assets_dir / "templates").mkdir(exist_ok=True)
+    (assets_dir / "bibliography").mkdir(exist_ok=True)
+    
+    # Create single assets symlink in posts/year directory
+    assets_symlink = posts_year_dir / "assets"
+    if not assets_symlink.exists():
+        try:
+            assets_symlink.symlink_to("../../assets")
+            print(f"INFO: Created assets symlink for year {year}")
+        except Exception as e:
+            print(f"Warning: Could not create assets symlink: {e}")
+    else:
+        print(f"INFO: Assets symlink already exists for year {year}")
+
+def create_today_entry(optional_name=None):
+    base_dir, config, today = get_base_dir(), load_config(), datetime.now()
+    posts_dir, year_dir = base_dir / "posts", base_dir / "posts" / str(today.year)
+    year_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Set up assets directory and symlink
+    setup_assets_directory(base_dir, today.year)
+    
+    base_name = f"{today.year}-{today.month:02d}-{today.day:02d}"
+    if optional_name:
+        clean_name = re.sub(r'[^a-zA-Z0-9_-]', '', optional_name.strip())
+        if clean_name: base_name += f"-{clean_name}"
+    entry_file = year_dir / f"{base_name}.tex"
+    if not entry_file.exists():
+        template_file = base_dir / "assets/templates/entries/entry_template.tex"
+        if template_file.exists():
+            with open(template_file, 'r') as f: template_content = f.read()
+            month_names = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+            default_tags = [str(today.year)]
+            if optional_name:
+                clean_name = re.sub(r'[^a-zA-Z0-9_-]', '', optional_name.strip())
+                #if clean_name: default_tags.append(clean_name.lower())
+            replacements = {'<YEAR>': str(today.year), '<MONTH>': f"{today.month:02d}", '<DAY>': f"{today.day:02d}", '<DAY_NUMBER>': str(today.day), '<MONTH_NAME>': month_names[today.month - 1], '<AUTHOR>': config['author'], '<INSTITUTION>': config['institution'], '<FILENAME>': entry_file.name, '<TAGS>': ", ".join(default_tags)}
+            content = template_content
+            for placeholder, value in replacements.items(): content = content.replace(placeholder, value)
+            with open(entry_file, 'w') as f: f.write(content)
+        else:
+            with open(entry_file, 'w') as f: f.write(f"""%<TAGs>: {today.year}\n\\documentclass[11pt,letterpaper]{{article}}\n\\begin{{document}}\n\\section{{Diary Entry - {today.strftime('%B %d, %Y')}}}\n% Add your research content here\n\\end{{document}}\n""")
+        print(f"INFO: Created diary entry: {entry_file}")
+    else: print(f"INFO: Diary entry already exists: {entry_file}")
+    
+    # Open the LaTeX file for editing
+    import subprocess
+    try:
+        subprocess.run(['open', str(entry_file)], check=True)
+        print(f"INFO: Opened {entry_file} for editing")
+    except subprocess.CalledProcessError:
+        print(f"WARNING: Could not open {entry_file} automatically")
+    except FileNotFoundError:
+        print(f"WARNING: 'open' command not found - please open {entry_file} manually")
+    
+    return entry_file
+
+def extract_tags_from_file(file_path):
+    if not file_path.exists(): return []
+    try:
+        with open(file_path, 'r') as f:
+            for line in f:
+                match = re.search(r'%\s*<TAGs>\s*:\s*(.+)', line, re.IGNORECASE)
+                if match:
+                    tags_str = match.group(1).strip()
+                    if tags_str: return [re.sub(r'\s+', ' ', tag) for tag in [tag.strip().lower() for tag in tags_str.split(',')] if tag.strip()]
+    except: pass
+    return []
+
+def find_files_by_tags(tags):
+    posts_dir = get_base_dir() / "posts"
+    if not posts_dir.exists(): return []
+    search_tags = [tag.lower().strip() for tag in tags]
+    matching_files = []
+    for tex_file in posts_dir.rglob("*.tex"):
+        if any(file_tag in search_tags for file_tag in extract_tags_from_file(tex_file)): matching_files.append(tex_file)
+    return sorted(matching_files)
+
+def compile_latex(tex_file):
+    if not shutil.which('pdflatex'): raise RuntimeError("pdflatex not found")
+    tex_dir, tex_name, pdf_file = tex_file.parent, tex_file.name, tex_file.parent / (tex_file.stem + '.pdf')
+    original_dir = os.getcwd()
+    os.chdir(tex_dir)
+    try:
+        subprocess.run(['pdflatex', '-interaction=nonstopmode', tex_name], capture_output=True)
+        tex_content = open(tex_file).read()
+        if '\\bibliography{' in tex_content or '\\cite{' in tex_content:
+            if shutil.which('bibtex'):
+                print("INFO: Running bibtex")
+                subprocess.run(['bibtex', tex_file.stem], capture_output=True)
+                for _ in range(2): subprocess.run(['pdflatex', '-interaction=nonstopmode', tex_name], capture_output=True)
+        subprocess.run(['pdflatex', '-interaction=nonstopmode', tex_name], capture_output=True)
+        for ext in ['.aux', '.log', '.out', '.toc', '.bbl', '.blg', '.synctex.gz']:
+            temp_file = tex_file.with_suffix(ext)
+            if temp_file.exists(): temp_file.unlink()
+    finally: os.chdir(original_dir)
+    if not pdf_file.exists(): raise RuntimeError("PDF file was not generated")
+    return pdf_file
+
+def compile_to_html(tex_file):
+    if not shutil.which('pandoc'): raise RuntimeError("pandoc not found - install with: brew install pandoc (macOS) or apt install pandoc (Linux)")
+    tex_dir, tex_name, html_file = tex_file.parent, tex_file.name, tex_file.parent / (tex_file.stem + '.html')
+    original_dir = os.getcwd()
+    os.chdir(tex_dir)
+    try:
+        print("INFO: Converting LaTeX to HTML with pandoc")
+        
+        # Check if bibliography file exists through assets symlink
+        bib_file = tex_dir / "assets/bibliography/reference.bib"
+        
+        # Build pandoc command with academic styling and bibliography support
+        cmd = ['pandoc', tex_name, '-o', html_file.name, 
+               '--standalone', '--mathjax',
+               '--citeproc',  # Enable citation processing
+               '--css', 'https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css']
+        
+        # Add bibliography if it exists
+        if bib_file.exists():
+            cmd.extend(['--bibliography', 'assets/bibliography/reference.bib'])
+            print("INFO: Including bibliography file")
+        
+        # Add custom CSS for academic formatting
+        css_content = create_academic_css()
+        css_file = tex_dir / "academic.css"
+        with open(css_file, 'w') as f:
+            f.write(css_content)
+        cmd.extend(['--css', 'academic.css'])
+        
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            print(f"Warning: pandoc conversion had issues: {result.stderr}")
+        
+        # Clean up temporary CSS file
+        if css_file.exists():
+            css_file.unlink()
+            
+    finally: os.chdir(original_dir)
+    if not html_file.exists(): raise RuntimeError("HTML file was not generated")
+    return html_file
+
+def create_academic_css():
+    return """
+/* Academic Paper Styling for Diary HTML Output */
+body {
+    font-family: 'Times New Roman', Times, serif;
+    line-height: 1.6;
+    max-width: 8.5in;
+    margin: 0 auto;
+    padding: 1in;
+    background-color: #ffffff;
+    color: #000000;
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Times New Roman', Times, serif;
+    font-weight: bold;
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+}
+
+h1 { font-size: 1.5em; text-align: center; }
+h2 { font-size: 1.3em; }
+h3 { font-size: 1.1em; }
+
+/* Paragraphs */
+p {
+    text-align: justify;
+    margin-bottom: 1em;
+    text-indent: 0;
+}
+
+/* Academic spacing */
+.title {
+    text-align: center;
+    font-size: 1.8em;
+    font-weight: bold;
+    margin-bottom: 0.5em;
+}
+
+.author {
+    text-align: center;
+    font-size: 1.1em;
+    margin-bottom: 2em;
+}
+
+/* Math formatting */
+.math {
+    font-family: 'Computer Modern', 'Times New Roman', serif;
+}
+
+/* Code blocks */
+pre {
+    background-color: #f5f5f5;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 1em;
+    overflow-x: auto;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9em;
+}
+
+code {
+    background-color: #f5f5f5;
+    padding: 0.2em 0.4em;
+    border-radius: 3px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9em;
+}
+
+/* Tables */
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 1em 0;
+}
+
+th, td {
+    border: 1px solid #ddd;
+    padding: 0.5em;
+    text-align: left;
+}
+
+th {
+    background-color: #f5f5f5;
+    font-weight: bold;
+}
+
+/* Lists */
+ul, ol {
+    margin: 1em 0;
+    padding-left: 2em;
+}
+
+li {
+    margin-bottom: 0.5em;
+}
+
+/* Bibliography */
+.references {
+    margin-top: 2em;
+    border-top: 1px solid #ccc;
+    padding-top: 1em;
+}
+
+.references h2 {
+    font-size: 1.2em;
+    margin-bottom: 1em;
+}
+
+/* Citations */
+.citation {
+    font-style: italic;
+}
+
+/* Blockquotes */
+blockquote {
+    margin: 1em 2em;
+    padding: 0.5em 1em;
+    border-left: 4px solid #ccc;
+    background-color: #f9f9f9;
+    font-style: italic;
+}
+
+/* Page breaks for printing */
+@media print {
+    body {
+        margin: 0;
+        padding: 1in;
+    }
+    
+    .page-break {
+        page-break-before: always;
+    }
+}
+
+/* Responsive adjustments */
+@media screen and (max-width: 768px) {
+    body {
+        padding: 0.5in;
+        max-width: 100%;
+    }
+    
+    h1 { font-size: 1.3em; }
+    h2 { font-size: 1.2em; }
+    h3 { font-size: 1.1em; }
+}
+"""
+
+def setup_output_directory(output_dir):
+    base_dir = get_base_dir()
+    
+    # Create single assets symlink instead of individual file symlinks
+    assets_symlink = output_dir / "assets"
+    if not assets_symlink.exists():
+        try:
+            assets_symlink.symlink_to("../../assets")
+            print("INFO: Created assets symlink in output directory")
+        except Exception as e:
+            print(f"Warning: Could not create assets symlink: {e}")
+    
+    # Bibliography is now accessible through assets symlink at assets/bibliography/reference.bib
+    posts_source, posts_target = base_dir / "posts", output_dir / "posts"
+    if posts_source.exists():
+        try:
+            if posts_target.exists() or posts_target.is_symlink(): posts_target.unlink()
+            posts_target.symlink_to(posts_source)
+        except: pass
+
+def generate_collection_content(entry_files):
+    collection_content = ""
+    bibliography_files = set()  # Track unique bibliography files
+    
+    for entry_file in entry_files:
+        try:
+            with open(entry_file, 'r') as f: content = f.read()
+            doc_start, doc_end = content.find('\\begin{document}'), content.find('\\end{document}')
+            if doc_start != -1 and doc_end != -1:
+                doc_content = content[doc_start + len('\\begin{document}'):doc_end].strip()
+                
+                # Extract bibliography files from this entry
+                import re
+                bib_matches = re.findall(r'\\bibliography\{([^}]+)\}', doc_content)
+                for bib_match in bib_matches:
+                    bibliography_files.add(bib_match.strip())
+                
+                # Remove bibliography sections from individual entries
+                # Remove \bibliographystyle{...} lines
+                doc_content = re.sub(r'\\bibliographystyle\{[^}]*\}\s*', '', doc_content)
+                # Remove \bibliography{...} lines (including comment markers)
+                doc_content = re.sub(r'\\bibliography\{[^}]*\}[^\n]*\n?', '', doc_content)
+                
+                collection_content += f"\n% Entry from {entry_file.name}\n{doc_content}\n\\clearpage\n\n"
+        except: pass
+    
+    return collection_content, bibliography_files
+
+def cmd_today(args): print(f"Diary entry: {create_today_entry(args.name)}")
+
+def cmd_status(args):
+    base_dir, config = get_base_dir(), load_config()
+    posts_dir, year_dir = base_dir / "posts", base_dir / "posts" / str(config['year'])
+    entry_count, entry_files = 0, []
+    if year_dir.exists():
+        tex_files = list(year_dir.glob("*.tex"))
+        entry_count, entry_files = len(tex_files), [f.name for f in sorted(tex_files)]
+    all_tags = {}
+    if posts_dir.exists():
+        for tex_file in posts_dir.rglob("*.tex"):
+            for tag in extract_tags_from_file(tex_file): all_tags[tag] = all_tags.get(tag, 0) + 1
+    print(f"Diary System Status\n===================\nBase directory: {base_dir}\nYear: {config['year']}\nAuthor: {config['author']}\nInstitution: {config['institution']}\nOutput directory: {base_dir / config['output_dir']}\nTemplate directory: {base_dir / config['template_dir']}\nDiary entries for {config['year']}: {entry_count}")
+    if entry_files:
+        for entry_file in entry_files[:5]: print(f"  {entry_file}")
+        if len(entry_files) > 5: print(f"  ... and {len(entry_files) - 5} more")
+    if all_tags:
+        print(f"\nAvailable tags ({len(all_tags)}):")
+        for tag, count in sorted(all_tags.items(), key=lambda x: (-x[1], x[0]))[:10]: print(f"  {tag}: {count} entries")
+        if len(all_tags) > 10: print(f"  ... and {len(all_tags) - 10} more")
+
+def cmd_compile(args):
+    base_dir, config = get_base_dir(), load_config()
+    try:
+        output_format = getattr(args, 'format', 'pdf')
+        year = getattr(args, 'year', config['year'])
+        output_dir = Path(args.output) if hasattr(args, 'output') and args.output else base_dir / "collections" / f"year-{year}"
+        output_dir.mkdir(parents=True, exist_ok=True)
+        year_dir = base_dir / "posts" / str(year)
+        if not year_dir.exists(): raise FileNotFoundError(f"No diary entries found for year {year}")
+        entry_files = sorted(year_dir.glob(f"{year}-*.tex"))
+        if not entry_files: raise FileNotFoundError(f"No diary entries found in {year_dir}")
+        print(f"INFO: Found {len(entry_files)} diary entries")
+        setup_output_directory(output_dir)
+        collection_content, bibliography_files = generate_collection_content(entry_files)
+        
+        # Generate bibliography section if any bibliography files were found
+        bibliography_section = ""
+        if bibliography_files:
+            print(f"INFO: Found bibliography files: {', '.join(sorted(bibliography_files))}")
+            bibliography_section = "\n\\bibliographystyle{apalike}\n"
+            # Combine all bibliography files in a single \bibliography command
+            bib_files_list = ",".join(sorted(bibliography_files))
+            bibliography_section += f"\\bibliography{{{bib_files_list}}}\n"
+        
+        template_file, collection_tex = base_dir / "assets/templates/collection/collection_template.tex", output_dir / f"{year}-Research-Diary.tex"
+        if template_file.exists():
+            with open(template_file, 'r') as f: template_content = f.read()
+            content = template_content
+            # Add bibliography section to the diary entries content
+            full_content = collection_content + bibliography_section
+            for placeholder, value in {'<YEAR>': str(year), '<AUTHOR>': config['author'], '<INSTITUTION>': config['institution'], '<DIARYENTRIES>': full_content}.items(): content = content.replace(placeholder, value)
+            with open(collection_tex, 'w') as f: f.write(content)
+        else:
+            with open(collection_tex, 'w') as f: f.write(f"""\\documentclass[11pt,letterpaper]{{article}}\n\\title{{Research Diary Collection - {year}}}\n\\author{{{config['author']}}}\n\\begin{{document}}\n\\maketitle\n\\tableofcontents\n\\clearpage\n{collection_content}\n\\end{{document}}""")
+        print(f"INFO: Compiling {collection_tex} to {output_format.upper()}")
+        if output_format == 'html':
+            result_file = compile_to_html(collection_tex)
+        else:
+            result_file = compile_latex(collection_tex)
+        print(f"Successfully compiled diary: {result_file}")
+        
+        # Open the generated file
+        import subprocess
+        try:
+            subprocess.run(['open', str(result_file)], check=True)
+            print(f"INFO: Opened {result_file}")
+        except subprocess.CalledProcessError:
+            print(f"WARNING: Could not open {result_file} automatically")
+        except FileNotFoundError:
+            print(f"WARNING: 'open' command not found - please open {result_file} manually")
+            
+    except Exception as e: print(f"Error compiling diary: {e}"); sys.exit(1)
+
+def cmd_tags(args):
+    base_dir, config = get_base_dir(), load_config()
+    try:
+        matching_files = find_files_by_tags(args.tags)
+        if not matching_files: raise FileNotFoundError(f"No diary entries found with tags: {args.tags}")
+        print(f"INFO: Found {len(matching_files)} entries matching tags: {args.tags}")
+        output_format = getattr(args, 'format', 'pdf')
+        if hasattr(args, 'output') and args.output: output_dir = Path(args.output)
+        else:
+            normalized_tags = [re.sub(r'\s+', ' ', tag.strip().lower()) for tag in args.tags]
+            compilation_name = "+".join([tag.replace(' ', '-') for tag in sorted(set(normalized_tags))])
+            output_dir = base_dir / "collections" / compilation_name
+        output_dir.mkdir(parents=True, exist_ok=True)
+        setup_output_directory(output_dir)
+        collection_content, bibliography_files = generate_collection_content(matching_files)
+        
+        # Generate bibliography section if any bibliography files were found
+        bibliography_section = ""
+        if bibliography_files:
+            print(f"INFO: Found bibliography files: {', '.join(sorted(bibliography_files))}")
+            bibliography_section = "\n\\bibliographystyle{apalike}\n"
+            # Combine all bibliography files in a single \bibliography command
+            bib_files_list = ",".join(sorted(bibliography_files))
+            bibliography_section += f"\\bibliography{{{bib_files_list}}}\n"
+        
+        template_file = base_dir / "assets/templates/collection/collection_template.tex"
+        compilation_name = "+".join([tag.replace(' ', '-') for tag in sorted(set([re.sub(r'\s+', ' ', tag.strip().lower()) for tag in args.tags]))])
+        collection_tex = output_dir / f"{compilation_name}.tex"
+        if template_file.exists():
+            with open(template_file, 'r') as f: template_content = f.read()
+            content = template_content
+            # Add bibliography section to the diary entries content
+            full_content = collection_content + bibliography_section
+            for placeholder, value in {'<YEAR>': str(config['year']), '<AUTHOR>': config['author'], '<INSTITUTION>': config['institution'], '<DIARYENTRIES>': full_content}.items(): content = content.replace(placeholder, value)
+            with open(collection_tex, 'w') as f: f.write(content)
+        else:
+            with open(collection_tex, 'w') as f: f.write(f"""\\documentclass[11pt,letterpaper]{{article}}\n\\title{{Research Diary Collection - {' + '.join(args.tags)}}}\n\\author{{{config['author']}}}\n\\begin{{document}}\n\\maketitle\n\\tableofcontents\n\\clearpage\n{collection_content}\n\\end{{document}}""")
+        print(f"INFO: Compiling {collection_tex} to {output_format.upper()}")
+        if output_format == 'html':
+            result_file = compile_to_html(collection_tex)
+        else:
+            result_file = compile_latex(collection_tex)
+        print(f"Successfully compiled entries with tags {args.tags}: {result_file}")
+        
+        # Open the generated file
+        import subprocess
+        try:
+            subprocess.run(['open', str(result_file)], check=True)
+            print(f"INFO: Opened {result_file}")
+        except subprocess.CalledProcessError:
+            print(f"WARNING: Could not open {result_file} automatically")
+        except FileNotFoundError:
+            print(f"WARNING: 'open' command not found - please open {result_file} manually")
+            
+    except Exception as e: print(f"Error compiling by tags: {e}"); sys.exit(1)
+
+def compile_single_entry_to_html(tex_file, output_dir):
+    """Compile a single diary entry to HTML"""
+    if not shutil.which('pandoc'): raise RuntimeError("pandoc not found")
+    
+    # Set up paths
+    html_file = output_dir / f"{tex_file.stem}.html"
+    original_dir = os.getcwd()
+    
+    try:
+        os.chdir(output_dir)
+        
+        # Copy the tex file to output directory temporarily
+        temp_tex = output_dir / tex_file.name
+        shutil.copy(tex_file, temp_tex)
+        
+        # Build pandoc command for individual entry (simplified for individual posts)
+        cmd = ['pandoc', tex_file.name, '-o', html_file.name,
+               '--standalone', '--mathjax']
+        
+        # Check for bibliography - be more permissive for individual posts
+        bib_file = output_dir / "assets/bibliography/reference.bib"
+        has_citations = False
+        try:
+            with open(temp_tex, 'r') as f:
+                content = f.read()
+                has_citations = '\\cite{' in content or '\\bibliography{' in content
+        except:
+            pass
+        
+        # Only add citeproc if we have citations and bibliography
+        if has_citations and bib_file.exists():
+            cmd.extend(['--citeproc', '--bibliography', 'assets/bibliography/reference.bib'])
+        
+        # Add CSS
+        css_content = create_blog_post_css()
+        css_file = output_dir / "post.css"
+        with open(css_file, 'w') as f:
+            f.write(css_content)
+        cmd.extend(['--css', 'post.css'])
+        
+        # Run pandoc
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        
+        # Clean up temporary files
+        temp_tex.unlink()
+        css_file.unlink()
+        
+        if result.returncode != 0:
+            print(f"Warning: Failed to convert {tex_file.name}: {result.stderr}")
+            # Try without citeproc if it failed
+            if '--citeproc' in cmd:
+                print(f"  Retrying without bibliography...")
+                cmd = ['pandoc', tex_file.name, '-o', html_file.name,
+                       '--standalone', '--mathjax', '--css', 'post.css']
+                
+                # Recreate CSS file
+                with open(css_file, 'w') as f:
+                    f.write(css_content)
+                
+                # Copy tex file again
+                shutil.copy(tex_file, temp_tex)
+                
+                result = subprocess.run(cmd, capture_output=True, text=True)
+                
+                # Clean up again
+                temp_tex.unlink()
+                css_file.unlink()
+                
+                if result.returncode != 0:
+                    print(f"  Still failed: {result.stderr}")
+                    return None
+            else:
+                return None
+            
+    finally:
+        os.chdir(original_dir)
+    
+    return html_file if html_file.exists() else None
+
+def create_blog_post_css():
+    """Create CSS for individual blog posts"""
+    return """
+/* Blog Post Styling */
+body {
+    font-family: 'Georgia', 'Times New Roman', serif;
+    line-height: 1.6;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2rem;
+    color: #333;
+    background-color: #fff;
+}
+
+h1 {
+    color: #2c3e50;
+    border-bottom: 3px solid #3498db;
+    padding-bottom: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+h2 {
+    color: #34495e;
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+}
+
+h3 {
+    color: #7f8c8d;
+    margin-top: 1.5rem;
+}
+
+.date {
+    color: #7f8c8d;
+    font-style: italic;
+    margin-bottom: 2rem;
+}
+
+.tags {
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-top: 1px solid #ecf0f1;
+}
+
+.tag {
+    display: inline-block;
+    background: #3498db;
+    color: white;
+    padding: 0.2rem 0.6rem;
+    border-radius: 15px;
+    font-size: 0.8rem;
+    margin: 0.2rem;
+    text-decoration: none;
+}
+
+.navigation {
+    margin: 2rem 0;
+    text-align: center;
+}
+
+.nav-link {
+    color: #3498db;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.nav-link:hover {
+    text-decoration: underline;
+}
+
+/* Figure and Image Styling */
+img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 1.5rem auto;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    transition: box-shadow 0.3s ease;
+}
+
+img:hover {
+    box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+}
+
+.figure {
+    text-align: center;
+    margin: 2rem 0;
+}
+
+.caption, figcaption {
+    font-style: italic;
+    color: #666;
+    font-size: 0.9rem;
+    margin-top: 0.5rem;
+    text-align: center;
+    max-width: 90%;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Math and code styling */
+.math { font-family: 'Computer Modern', 'Times New Roman', serif; }
+pre { 
+    background: #f8f9fa; 
+    padding: 1rem; 
+    border-radius: 5px; 
+    overflow-x: auto;
+    border-left: 4px solid #3498db;
+}
+code { 
+    background: #f8f9fa; 
+    padding: 0.2rem 0.4rem; 
+    border-radius: 3px; 
+}
+
+/* Bibliography */
+.references {
+    margin-top: 2rem;
+    border-top: 1px solid #ecf0f1;
+    padding-top: 1rem;
+}
+
+/* Responsive design for images */
+@media screen and (max-width: 768px) {
+    img {
+        margin: 1rem auto;
+    }
+}
+"""
+
+def create_blog_index_css():
+    """Create CSS for blog index page"""
+    return """
+/* Blog Index Styling */
+body {
+    font-family: 'Georgia', 'Times New Roman', serif;
+    line-height: 1.6;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem;
+    color: #333;
+    background-color: #fff;
+}
+
+.header {
+    text-align: center;
+    margin-bottom: 3rem;
+    padding-bottom: 2rem;
+    border-bottom: 3px solid #3498db;
+}
+
+.header h1 {
+    color: #2c3e50;
+    font-size: 2.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.header .subtitle {
+    color: #7f8c8d;
+    font-size: 1.2rem;
+}
+
+.stats {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 2rem;
+    text-align: center;
+}
+
+.post-list {
+    margin: 2rem 0;
+}
+
+.post-item {
+    background: #fff;
+    border: 1px solid #ecf0f1;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: box-shadow 0.3s ease;
+}
+
+.post-item:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.post-title {
+    font-size: 1.3rem;
+    margin-bottom: 0.5rem;
+}
+
+.post-title a {
+    color: #2c3e50;
+    text-decoration: none;
+}
+
+.post-title a:hover {
+    color: #3498db;
+}
+
+.post-date {
+    color: #7f8c8d;
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+}
+
+.post-excerpt {
+    color: #555;
+    margin-bottom: 1rem;
+}
+
+.post-tags {
+    margin-top: 1rem;
+}
+
+.tag {
+    display: inline-block;
+    background: #3498db;
+    color: white;
+    padding: 0.2rem 0.6rem;
+    border-radius: 15px;
+    font-size: 0.8rem;
+    margin: 0.2rem;
+    text-decoration: none;
+}
+
+.footer {
+    text-align: center;
+    margin-top: 3rem;
+    padding-top: 2rem;
+    border-top: 1px solid #ecf0f1;
+    color: #7f8c8d;
+}
+"""
+
+def extract_title_and_excerpt(tex_file):
+    """Extract title and excerpt from a LaTeX file"""
+    try:
+        with open(tex_file, 'r') as f:
+            content = f.read()
+        
+        # Extract title from \section{} or filename
+        title_match = re.search(r'\\section\{([^}]+)\}', content)
+        if title_match:
+            title = title_match.group(1).strip()
+        else:
+            # Use filename as title, but clean it up better
+            name_part = tex_file.stem
+            # Remove date prefix if present
+            date_removed = re.sub(r'^\d{4}-\d{2}-\d{2}-?', '', name_part)
+            if date_removed:
+                title = date_removed.replace('-', ' ').replace('_', ' ').title()
+            else:
+                title = name_part.replace('-', ' ').replace('_', ' ').title()
+        
+        # Extract first substantial paragraph as excerpt
+        doc_start = content.find('\\begin{document}')
+        if doc_start != -1:
+            doc_content = content[doc_start:]
+            
+            # Try to find content after common LaTeX structures
+            # Skip \maketitle, \href, \section, etc.
+            lines = doc_content.split('\n')
+            excerpt_lines = []
+            
+            for line in lines:
+                line = line.strip()
+                # Skip empty lines, LaTeX commands, and comments
+                if (not line or 
+                    line.startswith('%') or 
+                    line.startswith('\\') or
+                    line in ['\\begin{document}', '\\end{document}', '\\maketitle']):
+                    continue
+                
+                # Clean up the line
+                clean_line = re.sub(r'\\[a-zA-Z]+\{[^}]*\}', '', line)
+                clean_line = re.sub(r'\\[a-zA-Z]+', '', clean_line)
+                clean_line = clean_line.strip()
+                
+                if len(clean_line) > 20:
+                    excerpt_lines.append(clean_line)
+                    if len(' '.join(excerpt_lines)) > 150:
+                        break
+            
+            if excerpt_lines:
+                excerpt = ' '.join(excerpt_lines)
+                excerpt = excerpt[:200] + "..." if len(excerpt) > 200 else excerpt
+                return title, excerpt
+        
+        return title, "Research diary entry..."
+    except:
+        return tex_file.stem.replace('-', ' ').title(), "Research diary entry..."
+
+def create_blog_index(blog_dir, posts_info, tags, config):
+    """Create the blog index.html file"""
+    index_html = blog_dir / "index.html"
+    
+    # Sort posts by date (newest first)
+    posts_info.sort(key=lambda x: x['date'], reverse=True)
+    
+    html_content = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Research Blog - {tags[0].title() if tags else 'All Posts'}</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="header">
+        <h1>Research Blog</h1>
+        <p class="subtitle">{config['author']} - {config['institution']}</p>
+        <p class="subtitle">Topic: {', '.join(tag.title() for tag in tags)}</p>
+    </div>
+    
+    <div class="stats">
+        <strong>{len(posts_info)} posts</strong> in this collection
+    </div>
+    
+    <div class="post-list">
+"""
+    
+    for post in posts_info:
+        html_content += f"""
+        <article class="post-item">
+            <h2 class="post-title">
+                <a href="posts/{post['html_file']}">{post['title']}</a>
+            </h2>
+            <div class="post-date">{post['formatted_date']}</div>
+            <div class="post-excerpt">{post['excerpt']}</div>
+            <div class="post-tags">
+"""
+        for tag in post['tags']:
+            html_content += f'<span class="tag">{tag}</span>'
+        
+        html_content += """
+            </div>
+        </article>
+"""
+    
+    html_content += f"""
+    </div>
+    
+    <div class="footer">
+        <p>Generated by Research Diary System on {datetime.now().strftime('%Y-%m-%d %H:%M')}</p>
+    </div>
+</body>
+</html>"""
+    
+    with open(index_html, 'w') as f:
+        f.write(html_content)
+    
+    return index_html
+
+def copy_figures_to_blog(blog_dir, matching_files, base_dir):
+    """Copy figures referenced by blog entries to the blog directory"""
+    figures_copied = set()
+    
+    # Create figures directory in blog
+    blog_figures_dir = blog_dir / "figures"
+    blog_figures_dir.mkdir(exist_ok=True)
+    
+    print("INFO: Copying figures for blog...")
+    
+    # Get unique years from matching files
+    years = set()
+    for tex_file in matching_files:
+        # Extract year from file path or name
+        year_match = re.search(r'(\d{4})', str(tex_file))
+        if year_match:
+            years.add(year_match.group(1))
+    
+    # Copy figures for each year
+    for year in years:
+        year_figures_dir = base_dir / "assets/figures" / year
+        if year_figures_dir.exists():
+            blog_year_figures = blog_figures_dir / year
+            blog_year_figures.mkdir(exist_ok=True)
+            
+            # Copy all figures from this year
+            for fig_file in year_figures_dir.iterdir():
+                if fig_file.is_file():
+                    dest_file = blog_year_figures / fig_file.name
+                    shutil.copy(fig_file, dest_file)
+                    figures_copied.add(fig_file.name)
+                    print(f"    📷 Copied {year}/{fig_file.name}")
+    
+    # Copy shared figures
+    shared_figures_dir = base_dir / "assets/figures" / "shared"
+    if shared_figures_dir.exists():
+        blog_shared_figures = blog_figures_dir / "shared"
+        blog_shared_figures.mkdir(exist_ok=True)
+        
+        for fig_file in shared_figures_dir.iterdir():
+            if fig_file.is_file():
+                dest_file = blog_shared_figures / fig_file.name
+                shutil.copy(fig_file, dest_file)
+                figures_copied.add(fig_file.name)
+                print(f"    📷 Copied shared/{fig_file.name}")
+    
+    if figures_copied:
+        print(f"    ✅ Copied {len(figures_copied)} figures to blog")
+    else:
+        print("    📷 No figures found to copy")
+
+def cmd_blog(args):
+    """Generate a blog with individual HTML posts and index page"""
+    base_dir, config = get_base_dir(), load_config()
+    
+    try:
+        # Find matching files
+        matching_files = find_files_by_tags(args.tags)
+        if not matching_files:
+            raise FileNotFoundError(f"No diary entries found with tags: {args.tags}")
+        
+        print(f"INFO: Found {len(matching_files)} entries for blog")
+        
+        # Create blog directory structure
+        normalized_tags = [re.sub(r'\s+', ' ', tag.strip().lower()) for tag in args.tags]
+        blog_name = "+".join([tag.replace(' ', '-') for tag in sorted(set(normalized_tags))])
+        blog_dir = base_dir / "blogs" / blog_name
+        posts_dir = blog_dir / "posts"
+        
+        # Create directories
+        blog_dir.mkdir(parents=True, exist_ok=True)
+        posts_dir.mkdir(exist_ok=True)
+        
+        print(f"INFO: Creating blog in {blog_dir}")
+        
+        # Set up output directory (copy necessary files)
+        setup_output_directory(blog_dir)
+        
+        # Copy figures directory to blog
+        copy_figures_to_blog(blog_dir, matching_files, base_dir)
+        
+        # Compile individual posts
+        posts_info = []
+        print("INFO: Compiling individual posts...")
+        
+        for tex_file in matching_files:
+            print(f"  Processing {tex_file.name}...")
+            
+            # Compile to HTML
+            html_file = compile_single_entry_to_html(tex_file, posts_dir)
+            if html_file:
+                # Extract metadata
+                title, excerpt = extract_title_and_excerpt(tex_file)
+                tags = extract_tags_from_file(tex_file)
+                
+                # Parse date from filename
+                date_match = re.match(r'(\d{4})-(\d{2})-(\d{2})', tex_file.name)
+                if date_match:
+                    date_str = f"{date_match.group(1)}-{date_match.group(2)}-{date_match.group(3)}"
+                    date_obj = datetime.strptime(date_str, '%Y-%m-%d')
+                    formatted_date = date_obj.strftime('%B %d, %Y')
+                else:
+                    formatted_date = "Unknown Date"
+                
+                posts_info.append({
+                    'title': title,
+                    'excerpt': excerpt,
+                    'tags': tags,
+                    'date': date_obj if date_match else datetime.now(),
+                    'formatted_date': formatted_date,
+                    'html_file': html_file.name,
+                    'tex_file': tex_file.name
+                })
+        
+        # Create CSS files
+        print("INFO: Creating stylesheets...")
+        with open(blog_dir / "style.css", 'w') as f:
+            f.write(create_blog_index_css())
+        
+        with open(posts_dir / "post.css", 'w') as f:
+            f.write(create_blog_post_css())
+        
+        # Create index.html
+        print("INFO: Creating blog index...")
+        index_file = create_blog_index(blog_dir, posts_info, args.tags, config)
+        
+        print(f"✅ Blog created successfully!")
+        print(f"📂 Blog directory: {blog_dir}")
+        print(f"🌐 Index page: {index_file}")
+        print(f"📄 Individual posts: {len(posts_info)} HTML files in {posts_dir}")
+        print(f"🚀 Open with: open {index_file}")
+        
+    except Exception as e:
+        print(f"Error creating blog: {e}")
+        sys.exit(1)
+
+def main():
+    # Check for year shortcut first (./diary 2025)
+    if len(sys.argv) == 2 and sys.argv[1].isdigit():
+        year = int(sys.argv[1])
+        # Simulate compile command with year
+        class YearArgs:
+            def __init__(self, year): self.year, self.output, self.format = year, None, 'pdf'
+        setup_logging(False)
+        cmd_compile(YearArgs(year))
+        return
+    
+    parser = argparse.ArgumentParser(description="Research Diary System - Simple all-in-one script", formatter_class=argparse.RawDescriptionHelpFormatter, epilog="Examples:\n  ./diary today                     # Create today's entry\n  ./diary today machine-learning    # Create entry (no quotes needed)\n  ./diary status                    # Show system status\n  ./diary 2025                      # Compile year 2025 (shortcut)\n  ./diary compile --year 2025       # Compile all 2025 entries\n  ./diary compile --year 2025 --format html  # Compile to HTML\n  ./diary tags AI ML                # Compile entries with tags (no quotes)\n  ./diary tags AI ML --format html  # Compile tags to HTML\n  ./diary blog AI ML                # Create blog with individual HTML posts")
+    parser.add_argument('--verbose', '-v', action='store_true', help='Enable verbose output')
+    subparsers = parser.add_subparsers(dest='command', help='Available commands')
+    today_parser = subparsers.add_parser('today', help='Create today\'s diary entry')
+    today_parser.add_argument('name', nargs='?', help='Optional name suffix (no quotes needed)')
+    today_parser.set_defaults(func=cmd_today)
+    status_parser = subparsers.add_parser('status', help='Show system status')
+    status_parser.set_defaults(func=cmd_status)
+    compile_parser = subparsers.add_parser('compile', help='Compile diary collection')
+    compile_parser.add_argument('--year', type=int, help='Year to compile')
+    compile_parser.add_argument('--format', choices=['pdf', 'html'], default='pdf', help='Output format (default: pdf)')
+    compile_parser.add_argument('--output', help='Output directory')
+    compile_parser.set_defaults(func=cmd_compile)
+    tags_parser = subparsers.add_parser('tags', help='Compile entries by tags')
+    tags_parser.add_argument('tags', nargs='+', help='Tags to search for (no quotes needed)')
+    tags_parser.add_argument('--format', choices=['pdf', 'html'], default='pdf', help='Output format (default: pdf)')
+    tags_parser.add_argument('--output', help='Output directory')
+    tags_parser.set_defaults(func=cmd_tags)
+    blog_parser = subparsers.add_parser('blog', help='Create a blog with individual HTML posts')
+    blog_parser.add_argument('tags', nargs='+', help='Tags to search for (creates blog for matching entries)')
+    blog_parser.set_defaults(func=cmd_blog)
+    args = parser.parse_args()
+    setup_logging(args.verbose)
+    args.func(args) if hasattr(args, 'func') else parser.print_help()
+
+if __name__ == "__main__": main()

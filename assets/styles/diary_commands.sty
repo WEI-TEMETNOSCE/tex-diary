@@ -1,0 +1,152 @@
+\ProvidesPackage{diary_commands}
+%%%%%%%%% RESEARCH DIARY - CUSTOM COMMANDS %%%%%%%%%%%%
+%% Personal mathematical shortcuts and custom commands
+%% Modify this file to add your own frequently-used commands
+%% This keeps personal customizations separate from core functionality
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%% BASIC MATH SHORTCUTS
+\newcommand{\coloneq}{\mathrel{\mathop:}=}
+\newcommand{\myf}[2]{\frac{\displaystyle #1}{\displaystyle #2}}
+\newcommand{\myp}[2]{\frac{\displaystyle \partial #1}{\displaystyle \partial  #2}}
+\newcommand{\myb}[1]{\mbox{\boldmath$#1$}}
+
+%% REFERENCE SHORTCUTS
+\newcommand{\eqnref}[1]{Eqn.~\eqref{#1}}
+\newcommand{\figref}[1]{Fig.~\ref{#1}}
+\newcommand{\here}[1]{\url{#1}}
+
+%% PERSONAL ANNOTATION COMMANDS
+\newcommand{\Qiang}[1]{\textcolor{red}{#1}\\}
+\newcommand{\qiang}[1]{\textcolor{red}{#1}}
+\newcommand{\Todo}[1]{\textcolor{red}{TODO: #1}\\}
+\newcommand{\todo}[1]{\textcolor{gray}{TODO: #1}}
+\newcommand{\ant}[1]{~~~~~~~\text{\textcolor{magenta}{//#1}}}
+\newcommand{\remark}[1]{\paragraph{Remark}#1}
+
+%% COLOR TEXT SHORTCUTS
+\newcommand{\red}[1]{\textcolor{red}{#1}}
+\newcommand{\med}[1]{\textcolor{magenta}{#1}}
+\newcommand{\blue}[1]{\textcolor{blue}{#1}}
+\newcommand{\gray}[1]{\textcolor{gray}{#1}}
+\newcommand{\green}[1]{\textcolor{green}{#1}}
+\newcommand{\myempty}[1]{}
+
+%% MATHEMATICAL SETS AND SPACES
+\newcommand{\RR}{\mathbb{R}}
+\newcommand{\CC}{\mathbb{C}}
+\newcommand{\NN}{\mathbb{N}}
+\newcommand{\PP}{\mathbb{P}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\D}{\mathbb{D}}
+\renewcommand{\P}{\mathcal{P}}
+\renewcommand{\H}{\mathcal{H}}
+\newcommand{\X}{\mathcal{X}}
+\newcommand{\B}{\mathcal{B}}
+\newcommand{\F}{\mathcal{F}}
+\newcommand{\M}{\mathbb{M}}
+
+%% PROBABILITY AND STATISTICS
+\newcommand{\var}{\mathrm{var}}
+\newcommand{\Var}{\mathrm{Var}}
+\newcommand{\cov}{\mathrm{cov}}
+\newcommand{\Cov}{\mathrm{Cov}}
+\newcommand{\corr}{\mathrm{corr}}
+\newcommand{\Corr}{\mathrm{Corr}}
+\newcommand{\pr}{\mathrm{Pr}}
+\newcommand{\prob}{\mathrm{Pr}}
+\newcommand{\normal}{\mathcal{N}}
+\newcommand{\MSE}{\mathrm{MSE}}
+\newcommand{\KL}{\mathrm{KL}}
+\DeclareMathOperator*{\argmax}{arg\,max}
+\DeclareMathOperator*{\argmin}{arg\,min}
+\DeclareMathOperator*{\median}{\mathrm{med}}
+\DeclareMathOperator*{\mode}{\mathrm{mod}}
+
+%% LINEAR ALGEBRA
+\newcommand{\V}{\mathbf}
+\newcommand{\vx}{\boldsymbol{x}}
+\newcommand{\vv}[1]{\boldsymbol{#1}}
+\newcommand{\trace}{\mathrm{trace}}
+\newcommand{\diag}{\mathrm{diag}}
+\renewcommand{\tt}{^\top}
+\newcommand\norm[1]{\left\lVert#1\right\rVert}
+\newcommand\abs[1]{\left\lvert#1\right\rvert}
+
+%% CALCULUS AND ANALYSIS
+\newcommand{\df}{\mathrm{d}}
+\renewcommand{\d}{\mathrm{d}}
+\newcommand{\dt}{\mathrm{d}t}
+\newcommand{\dW}{\mathrm{d}W}
+\newcommand{\dno}{\mathrm{d}}
+\newcommand{\dd}{\nabla}
+\newcommand{\tdd}{\tilde{\nabla}}
+\newcommand{\ddt}{\frac{\d}{\d t}}
+\renewcommand{\div}{\dd\cdot}
+\newcommand\at[2]{\left.#1\right|_{#2}}
+
+%% SPECIALIZED NOTATION
+\newcommand{\ind}{\mathbb{I}}
+\newcommand{\sign}{\mathrm{sign}}
+\newcommand{\cd}{\mid}
+\newcommand{\neib}[1]{\partial{#1}}
+\newcommand{\la}{\langle}
+\newcommand{\ra}{\rangle}
+
+%% CUSTOM OPERATORS AND SETS
+\newcommand{\set}[1]{\mathcal{#1}}
+\newcommand{\funcset}[1]{\mathcal{#1}}
+\newcommand{\opt}[1]{\mathcal{#1}}
+\newcommand{\f}[2]{\frac{#1}{#2}}
+
+%% RESEARCH-SPECIFIC SHORTCUTS
+\newcommand{\sumstein}{\mathcal{T}}
+\newcommand{\stein}{\mathcal{A}}
+\newcommand{\score}{\vv{s}}
+\newcommand{\ff}{\vv{\phi}}
+\newcommand{\eng}{E}
+\newcommand{\greedy}[1]{\mathrm{Greedy}\{#1\}}
+\newcommand{\hattheta}{\hat{\theta}}
+\newcommand{\cc}{\theta}
+\newcommand{\kernel}{\mathbf{k}}
+\newcommand{\datai}{^{(i)}}
+
+%% CONVENIENCE MACROS
+\def\bb#1\ee{\begin{align*}#1\end{align*}}
+\def\bba#1\eea{\begin{align}#1\end{align}}
+\def\bbb#1\eee{\begin{align}#1\end{align}}
+
+%% SPECIAL SYMBOLS
+\newcommand{\clickhere}[1]{\href{run:#1}{Click here}}
+
+%% EXTRA WIDE HAT (for wide expressions)
+\newcommand\reallywidehat[1]{\arraycolsep=0pt\relax%
+\begin{array}{c}
+\stretchto{
+  \scaleto{
+    \scalerel*[\widthof{\ensuremath{#1}}]{\kern-.5pt\bigwedge\kern-.5pt}
+    {\rule[-\textheight/2]{1ex}{\textheight}}
+  }{\textheight}
+}{0.5ex}\\
+#1\\
+\rule{-1ex}{0ex}
+\end{array}
+}
+
+%% CUSTOM DEFINITION EQUALS
+\makeatletter
+\newcommand{\defeq}{\mathrel{\aban@defeq}}
+\newcommand{\aban@defeq}{%
+  \vbox{\offinterlineskip\check@mathfonts
+    \ialign{\hfil##\hfil\cr
+      \fontsize{\ssf@size}{\z@}\normalfont def\cr
+      \noalign{\kern1\p@}
+      $\m@th=$\cr
+      \noalign{\kern-.5\fontdimen22\textfont2}
+    }%
+  }%
+}
+\makeatother
+
+%% CONVENIENCE EXPECTATION
+\newcommand{\e}[1]{\E\left[#1\right]}

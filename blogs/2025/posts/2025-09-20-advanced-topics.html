@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>2025-09-20-advanced-topics</title>
+  <style>
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+  </style>
+  <link rel="stylesheet" href="post.css" />
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script
+  src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js"
+  type="text/javascript"></script>
+</head>
+<body>
+<p><a href="run:2025-09-20-advanced-topics.tex">September 20</a></p>
+<h1 id="advanced-topics-in-ai-research">Advanced Topics in AI
+Research</h1>
+<p>Explored cutting-edge developments in artificial intelligence and
+their implications.</p>
+<h2 id="reinforcement-learning">Reinforcement Learning</h2>
+<p>The agent-environment interaction follows the Markov Decision
+Process:</p>
+<p><strong>Bellman Equation</strong>: <span
+class="math display">\[V^\pi(s) = \mathbb{E}[R_{t+1} + \gamma
+V^\pi(S_{t+1}) | S_t = s]\]</span></p>
+<p><strong>Q-Learning Update</strong>: <span class="math display">\[Q(s,
+a) \leftarrow Q(s, a) + \alpha[r + \gamma \max_{a&#39;} Q(s&#39;,
+a&#39;) - Q(s, a)]\]</span></p>
+<h2 id="policy-gradient-methods">Policy Gradient Methods</h2>
+<ul>
+<li><p><strong>REINFORCE</strong>: <span
+class="math inline">\(\nabla_\theta J(\theta) = \mathbb{E}[\nabla_\theta
+\log \pi_\theta(a|s) Q^\pi(s,a)]\)</span></p></li>
+<li><p><strong>Actor-Critic</strong>: Combines value function
+approximation with policy gradients</p></li>
+<li><p><strong>PPO</strong>: Proximal Policy Optimization with clipped
+surrogate objective</p></li>
+<li><p><strong>TRPO</strong>: Trust Region Policy Optimization for
+stable updates</p></li>
+</ul>
+<h2 id="meta-learning-learning-to-learn">Meta-Learning (Learning to
+Learn)</h2>
+<p>Key approaches:</p>
+<ol>
+<li><p><strong>Model-Agnostic Meta-Learning (MAML)</strong>: <span
+class="math display">\[\theta&#39; = \theta - \alpha \nabla_\theta
+L_{T_i}(f_\theta)\]</span> <span class="math display">\[\theta
+\leftarrow \theta - \beta \nabla_\theta \sum_{T_i}
+L_{T_i}(f_{\theta&#39;})\]</span></p></li>
+<li><p><strong>Prototypical Networks</strong>: Learn embeddings where
+classes form clusters</p></li>
+<li><p><strong>Memory-Augmented Networks</strong>: External memory for
+few-shot learning</p></li>
+</ol>
+<h2 id="interpretability-and-explainable-ai">Interpretability and
+Explainable AI</h2>
+<ul>
+<li><p><strong>LIME</strong>: Local Interpretable Model-agnostic
+Explanations</p></li>
+<li><p><strong>SHAP</strong>: SHapley Additive exPlanations using game
+theory</p></li>
+<li><p><strong>Grad-CAM</strong>: Gradient-weighted Class Activation
+Mapping for CNNs</p></li>
+<li><p><strong>Attention Visualization</strong>: Understanding what
+transformers focus on</p></li>
+</ul>
+<h2 id="future-research-directions">Future Research Directions</h2>
+<ul>
+<li><p>Causal inference in machine learning</p></li>
+<li><p>Federated learning for privacy-preserving AI</p></li>
+<li><p>Neuromorphic computing and spiking neural networks</p></li>
+<li><p>AI safety and alignment research</p></li>
+</ul>
+</body>
+</html>

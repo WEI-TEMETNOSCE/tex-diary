@@ -1,0 +1,186 @@
+\ProvidesPackage{diary_theorems}
+%%%%%%%%% RESEARCH DIARY - THEOREM ENVIRONMENTS %%%%%%%%%%%%
+%% Beautiful colored theorem boxes and enhanced theorem environments
+%% Provides styled alternatives to the basic theorems in diary_base.sty
+%% Load this AFTER diary_base.sty for enhanced visual theorem environments
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\makeatletter
+
+%% REQUIRED PACKAGES (if not already loaded)
+\@ifpackageloaded{thmtools}{}{\usepackage{thmtools}}
+\@ifpackageloaded{mdframed}{}{\PassOptionsToPackage{framemethod=TikZ}{mdframed}\usepackage{mdframed}}
+
+\theoremstyle{definition}
+
+%% MASTER THEOREM STYLE FUNCTION
+%% Creates consistent colored theorem boxes
+\newcommand{\definecolorbox}[2]{%
+  \expandafter\declaretheoremstyle\expandafter[%
+    headfont=\bfseries\sffamily\color{#1!70!black}, 
+    bodyfont=\normalfont,
+    mdframed={%
+      linewidth=2pt,
+      rightline=false, 
+      topline=false, 
+      bottomline=false,
+      linecolor=#1, 
+      backgroundcolor=#1!5,
+    }
+  ]{#2}%
+}
+
+%% DEFINE COLOR SCHEMES FOR DIFFERENT THEOREM TYPES
+\definecolorbox{ForestGreen}{thmgreenbox}      % Definitions, notes, remarks
+\definecolorbox{NavyBlue}{thmbluebox}          % Examples, explanations
+\definecolorbox{RawSienna}{thmredbox}          % Theorems, lemmas, propositions
+\definecolorbox{LightPink!75!white}{thmpastelpinkbox}
+\definecolorbox{Thistle!80!white}{thmpastelvioletbox}
+\definecolorbox{Purple!75!white}{thmpurplebox}
+\definecolorbox{Goldenrod!80!black}{thmgoldbox}
+\definecolorbox{orange}{thmorangebox}          % Background, notation
+
+%% STYLED THEOREM ENVIRONMENTS
+%% These provide beautiful colored alternatives to basic theorems
+
+%% Green Box Environments (Definitions and Notes)
+\@ifundefined{styledefinition}{
+  \declaretheorem[style=thmgreenbox, name=Definition]{styledefinition}
+}{}
+
+\@ifundefined{styleremark}{
+  \declaretheorem[style=thmgreenbox, numbered=no, name=Remark]{styleremark*}
+  \declaretheorem[style=thmgreenbox, name=Remark]{styleremark}
+}{}
+
+\@ifundefined{stylenote}{
+  \declaretheorem[style=thmgreenbox, numbered=no, name=Note]{stylenote*}
+  \declaretheorem[style=thmgreenbox, name=Note]{stylenote}
+}{}
+
+%% Orange Box Environments (Background Information)
+\declaretheorem[style=thmorangebox, name=Background]{background}
+\declaretheorem[style=thmorangebox, numbered=no, name=Background]{background*}
+\declaretheorem[style=thmorangebox, numbered=no, name=Notation]{notation*}
+\declaretheorem[style=thmorangebox, name=Notation]{notation}
+
+%% Blue Box Environments (Examples and Explanations)
+\@ifundefined{styledexample}{
+  \declaretheorem[style=thmbluebox, numbered=no, name=Example]{styledexample*}
+  \declaretheorem[style=thmbluebox, name=Example]{styledexample}
+}{}
+
+%% Red Box Environments (Main Results)
+\@ifundefined{styledproposition}{
+  \declaretheorem[style=thmredbox, name=Proposition]{styledproposition} 
+}{}
+
+\@ifundefined{styledtheorem}{
+  \declaretheorem[style=thmredbox, name=Theorem]{styledtheorem}
+}{}
+
+\@ifundefined{styledlemma}{
+  \declaretheorem[style=thmredbox, name=Lemma]{styledlemma}
+}{}
+
+\@ifundefined{styledcorollary}{
+  \declaretheorem[style=thmredbox, name=Corollary]{styledcorollary}
+}{}
+
+%% SPECIAL THEOREM ENVIRONMENTS (always available)
+\newtheorem*{uovt}{UOVT}
+\newtheorem*{previouslyseen}{As previously seen}
+\newtheorem*{problem}{Problem}
+\newtheorem*{observe}{Observe}
+\newtheorem*{property}{Property}
+\newtheorem*{intuition}{Intuition}
+
+%% ENHANCED PROOF ENVIRONMENTS
+%% Custom styled proof boxes
+
+\declaretheoremstyle[
+  headfont=\bfseries\sffamily\color{RawSienna!70!black}, 
+  bodyfont=\normalfont,
+  numbered=no,
+  mdframed={
+    linewidth=2pt,
+    rightline=false, 
+    topline=false, 
+    bottomline=false,
+    linecolor=RawSienna, 
+    backgroundcolor=RawSienna!1,
+  },
+  qed=\qedsymbol
+]{thmproofbox}
+
+\declaretheoremstyle[
+  headfont=\bfseries\sffamily\color{NavyBlue!70!black}, 
+  bodyfont=\normalfont,
+  numbered=no,
+  mdframed={
+    linewidth=2pt,
+    rightline=false, 
+    topline=false, 
+    bottomline=false,
+    linecolor=NavyBlue, 
+    backgroundcolor=NavyBlue!1,
+  }
+]{thmexplanationbox}
+
+%% Enhanced proof environment (replaces standard proof)
+\declaretheorem[style=thmproofbox, name=Proof]{replacementproof}
+\renewenvironment{proof}[1][\proofname]{\vspace{-10pt}\begin{replacementproof}}{\end{replacementproof}}
+
+%% Explanation environment for detailed explanations
+\declaretheorem[style=thmexplanationbox, name=Explanation]{tmpexplanation}
+\newenvironment{explanation}[1][]{\vspace{-10pt}\begin{tmpexplanation}}{\end{tmpexplanation}}
+
+%% FLEXIBLE COLORED BOX ENVIRONMENT
+%% Usage: \begin{cbox}[color][title] ... \end{cbox}
+%% Examples: 
+%%   \begin{cbox} ... \end{cbox}                    % Default blue box
+%%   \begin{cbox}[red] ... \end{cbox}               % Red box, no title
+%%   \begin{cbox}[green][Important Note] ... \end{cbox}  % Green box with title
+
+\NewDocumentEnvironment{cbox}{O{blue} o}{
+  \IfValueTF{#2}{%
+    \begin{mdframed}[
+      linewidth=2pt,
+      linecolor=#1,
+      backgroundcolor=#1!5,
+      rightline=false,
+      topline=false,
+      bottomline=false,
+      innertopmargin=10pt,
+      innerbottommargin=10pt,
+      innerleftmargin=10pt,
+      innerrightmargin=10pt,
+      frametitle={\normalfont\sffamily\bfseries\color{#1!70!black} #2},
+      frametitleaboveskip=5pt,
+      frametitlealignment=\raggedright
+    ]%
+  }{%
+    \begin{mdframed}[
+      linewidth=2pt,
+      linecolor=#1,
+      backgroundcolor=#1!5,
+      rightline=false,
+      topline=false,
+      bottomline=false,
+      innertopmargin=10pt,
+      innerbottommargin=10pt,
+      innerleftmargin=10pt,
+      innerrightmargin=10pt
+    ]%
+  }%
+}{
+  \end{mdframed}
+}
+
+\makeatother
+
+%% USAGE NOTES:
+%% - For basic theorems: Use environments from diary_base.sty (thm, lem, cor, etc.)
+%% - For styled theorems: Use styled* environments (styledtheorem, styledlemma, etc.)
+%% - For custom boxes: Use cbox environment with optional color and title
+%% - All environments are designed to work together without conflicts

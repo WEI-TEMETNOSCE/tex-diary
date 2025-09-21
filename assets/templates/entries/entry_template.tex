@@ -1,0 +1,25 @@
+% Add your research tags below (comma-separated, case-insensitive)
+% Year is automatically added as a tag
+%<TAGs>: <TAGS>
+%<TOPICs>: 
+
+\documentclass[11pt,letterpaper]{article}
+
+\newcommand{\workingDate}{\textsc{<YEAR> $|$ <MONTH_NAME> $|$ <DAY>}}
+\newcommand{\userName}{<AUTHOR>}
+\newcommand{\institution}{<INSTITUTION>} 
+
+\usepackage{assets/styles/diary_base}        % Core packages and basic theorems
+\usepackage{assets/styles/diary_theorems}   % Enhanced colored theorem environments (optional)
+\usepackage{assets/styles/diary_commands}   % Personal shortcuts and commands
+
+
+\begin{document}
+\href{run:<FILENAME>}{\Huge <MONTH_NAME> <DAY_NUMBER>} %##@@TitleDateString@@##
+
+\section{ }
+
+
+\bibliographystyle{apalike} 
+\bibliography{assets/bibliography/reference}%##@@BibFileString@@##
+\end{document}

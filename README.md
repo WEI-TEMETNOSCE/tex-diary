@@ -1,0 +1,382 @@
+# Research Diary System
+
+A simple, self-contained research diary system for academics and researchers. Create, organize, and compile your daily research notes into beautiful LaTeX documents.
+
+## ✨ Features
+
+- 📝 **Daily Entries** - Create diary entries with automatic date formatting
+- 🏷️ **Smart Tagging** - Tag entries with topics (supports spaces: "machine learning", "neural networks")
+- 📚 **Collections** - Compile entries by year or by tags
+- 🔄 **Auto Year Detection** - Automatically uses current year
+- 📄 **LaTeX Output** - Professional PDF compilation with mathematical notation
+- 🎯 **One Script** - Everything in a single executable file
+- ⚡ **Simple Setup** - No complex installation required
+
+## 🚀 Quick Start
+
+```bash
+# Make the script executable (first time only)
+chmod +x diary
+
+# Create today's diary entry
+./diary today
+
+# Create entry with a topic name (no quotes needed!)
+./diary today machine-learning
+
+# View system status
+./diary status
+
+# Compile all entries from current year (super simple!)
+./diary 2025
+
+# Compile entries with specific tags (no quotes needed!)
+./diary tags AI machine-learning
+
+# Create a blog with individual HTML posts (no quotes needed!)
+./diary blog AI machine-learning
+```
+
+## 📁 Directory Structure
+
+```
+diary/
+├── diary                 # Main executable script
+├── config.md             # User-friendly configuration
+├── posts/                # All diary entries
+│   └── 2025/             # Organized by year
+│       ├── 2025-01-15-research-methods.tex
+│       ├── 2025-01-16-neural-networks.tex
+│       └── ...
+├── collections/          # Compiled outputs (combined documents)
+│   ├── year-2025/        # Yearly compilations
+│   ├── ai+ml/            # Tag-based collections
+│   └── ...
+├── blogs/                # Individual post blogs ✨ NEW!
+│   ├── ai+ml/            # Blog for AI+ML topics
+│   │   ├── index.html    # Blog homepage
+│   │   ├── style.css     # Blog styling
+│   │   └── posts/        # Individual HTML posts
+│   └── ...
+└── latex/                # Templates and styles
+    ├── templates/
+    ├── styles/
+    └── bibliography/
+```
+
+## 📖 Command Line Usage
+
+### Create Diary Entries
+
+```bash
+# Create today's entry
+./diary today
+
+# Create entry with optional name (no quotes needed!)
+./diary today optimization-methods
+./diary today literature-review
+./diary today experiment-results
+```
+
+**What happens:**
+- Creates `posts/YEAR/YYYY-MM-DD-[name].tex` 
+- Automatically includes current year as tag
+- Opens with template ready for editing
+
+### View System Status
+
+```bash
+# Basic status
+./diary status
+
+# Verbose output (shows debug info)
+./diary --verbose status
+```
+
+**Shows:**
+- Number of entries for current year
+- Available tags and their frequencies
+- System configuration
+- Directory locations
+
+### Compile Collections
+
+#### By Year (All Entries)
+```bash
+# Compile current year (super simple!)
+./diary 2025
+
+# Compile other years
+./diary 2024
+./diary 2023
+
+# Traditional way (still works)
+./diary compile --year 2025
+
+# Compile to HTML instead of PDF
+./diary compile --year 2025 --format html
+
+# Custom output location
+./diary compile --year 2025 --output my-research-2025
+```
+
+**Output:** 
+- PDF: `collections/year-YYYY/YYYY-Research-Diary.pdf`
+- HTML: `collections/year-YYYY/YYYY-Research-Diary.html`
+
+#### By Tags (Filtered Entries)
+```bash
+# Single tag (no quotes needed!)
+./diary tags machine-learning
+
+# Multiple tags (finds entries with ANY of these tags)
+./diary tags AI neural-networks deep-learning
+
+# Tags with spaces still need quotes
+./diary tags "natural language processing" "computer vision"
+
+# Mixed - simple tags without quotes, spaced tags with quotes
+./diary tags AI "machine learning" deep-learning
+
+# Compile to HTML instead of PDF
+./diary tags AI deep-learning --format html
+
+# Custom output location
+./diary tags AI ML --output my-ai-collection
+```
+
+**Output:** 
+- PDF: `collections/tag1+tag2+tag3/tag1+tag2+tag3.pdf`
+- HTML: `collections/tag1+tag2+tag3/tag1+tag2+tag3.html`
+
+#### Create Blog (Individual HTML Posts) ✨ NEW!
+```bash
+# Create a blog with individual HTML posts
+./diary blog AI machine-learning
+
+# Create blog for specific research topics
+./diary blog "deep learning" transformers
+
+# Multiple topics
+./diary blog research-methods statistics analysis
+```
+
+**What happens:**
+- Creates `blogs/tag1+tag2/` directory
+- Generates individual HTML files for each matching entry in `posts/` subfolder
+- Creates beautiful `index.html` with post previews and links
+- Includes responsive CSS styling for modern blog appearance
+
+**Output Structure:**
+```
+blogs/tag1+tag2/
+├── index.html          # Main blog page with post list
+├── style.css           # Blog styling
+└── posts/              # Individual post HTML files
+    ├── 2025-01-15-entry1.html
+    ├── 2025-01-16-entry2.html
+    ├── post.css         # Post styling
+    └── ...
+```
+
+## 🏷️ Tagging System
+
+### Adding Tags to Entries
+
+Edit the tag line in your `.tex` files:
+
+```latex
+% <TAGs>: 2025, machine learning, neural networks, research methods
+```
+
+**Tag Rules:**
+- **Comma-separated**: Use commas to separate multiple tags
+- **Spaces allowed**: "neural networks", "machine learning", "research methods"
+- **Case insensitive**: "AI" matches "ai" matches "Ai"
+- **Auto year**: Current year automatically added
+- **Custom tags**: Add any topics relevant to your research
+
+### Tag Examples
+
+```latex
+% <TAGs>: 2025, deep learning, transformers, attention mechanisms
+% <TAGs>: 2025, experiment results, statistical analysis
+% <TAGs>: 2025, literature review, survey paper, related work
+% <TAGs>: 2025, meeting notes, advisor discussion
+% <TAGs>: 2025, conference paper, submission deadline
+```
+
+## ⚙️ Configuration
+
+Edit `config.md` to customize your setup:
+
+```markdown
+**Author Name**: Your Name
+**Institution**: Your University
+**Current Year**: auto
+**Default Editor**: code
+```
+
+**Key Settings:**
+- `auto` for year = automatically use current year
+- Editor options: `code` (VS Code), `open` (macOS default), `vim`, etc.
+
+## 📝 Writing Diary Entries
+
+Each entry supports full LaTeX formatting:
+
+```latex
+\section{Research Progress}
+
+Today I worked on \textbf{attention mechanisms} in transformers.
+
+\subsection{Key Findings}
+\begin{itemize}
+    \item Multi-head attention improves performance
+    \item Positional encoding is crucial: $PE_{pos,2i} = \sin(pos/10000^{2i/d})$
+    \item Self-attention complexity is $O(n^2)$
+\end{itemize}
+
+\subsection{Next Steps}
+\begin{enumerate}
+    \item Implement efficient attention
+    \item Run experiments on dataset
+    \item Compare with baseline models
+\end{enumerate}
+```
+
+## 🔧 Advanced Usage
+
+### Workflow Examples
+
+```bash
+# Daily research workflow (no quotes needed!)
+./diary today monday-research
+./diary today tuesday-experiments  
+./diary today wednesday-analysis
+
+# Project-based entries
+./diary today project-alpha-week3
+./diary today paper-submission-final
+
+# Meeting notes
+./diary today advisor-meeting
+./diary today group-discussion
+
+# Compile monthly progress
+./diary tags project-alpha --output monthly-alpha-progress
+
+# Compile all meetings
+./diary tags meeting discussion --output all-meetings
+
+# Year-end compilation (super simple!)
+./diary 2024
+```
+
+### Multiple Tag Searches
+
+```bash
+# Find entries about any ML topic (mix of simple and spaced tags)
+./diary tags "machine learning" "deep learning" neural-networks AI
+
+# Research methodology entries
+./diary tags experiment analysis methodology statistics
+
+# Paper writing entries  
+./diary tags writing paper submission review
+```
+
+## 📋 Requirements
+
+### Essential
+- **Python 3.6+** (usually pre-installed)
+
+### For PDF Compilation
+- **LaTeX** (for PDF compilation):
+  - macOS: `brew install --cask mactex`
+  - Ubuntu: `sudo apt-get install texlive-full`
+  - Windows: Install MiKTeX or TeX Live
+
+### For HTML Compilation ✨ NEW!
+- **Pandoc** (for HTML compilation):
+  - macOS: `brew install pandoc`
+  - Ubuntu: `sudo apt install pandoc`
+  - Windows: Download from [pandoc.org](https://pandoc.org/installing.html)
+- **Internet connection** (for MathJax CDN)
+
+### HTML Features
+- 📚 **Bibliography Support** - Automatic citation processing with `--citeproc`
+- 🎨 **Academic Styling** - Times New Roman, proper margins, justified text
+- 🧮 **Math Rendering** - MathJax for LaTeX equations
+- 📱 **Responsive Design** - Works on mobile and desktop
+- 🔍 **Searchable** - Full-text search with Ctrl+F
+
+## 🛠️ Troubleshooting
+
+### Common Issues
+
+**"pdflatex not found"**
+```bash
+# Install LaTeX distribution
+brew install --cask mactex  # macOS
+sudo apt install texlive-full  # Ubuntu
+```
+
+**"pandoc not found"** (for HTML compilation)
+```bash
+# Install pandoc
+brew install pandoc  # macOS
+sudo apt install pandoc  # Ubuntu
+```
+
+**"No diary entries found"**
+- Check you're in the right directory
+- Ensure entries have proper `<TAGs>:` format
+- Use `./diary status` to see available entries
+
+**HTML compilation issues**
+- Ensure internet connection for MathJax and Bootstrap CSS
+- Try running pandoc manually: `pandoc file.tex -o file.html --standalone --mathjax`
+
+**Template not found**
+- Ensure `latex/templates/` directory exists
+- Check file permissions
+
+### Getting Help
+
+```bash
+# Show all available commands
+./diary --help
+
+# Show help for specific command
+./diary today --help
+./diary compile --help
+./diary tags --help
+```
+
+## 🎯 Tips & Best Practices
+
+### Daily Habits
+1. **Consistent naming**: Use descriptive entry names
+2. **Tag everything**: Add relevant tags to all entries
+3. **Regular compilation**: Weekly/monthly progress reviews
+4. **Backup**: Keep your `posts/` directory backed up
+
+### Tag Organization
+- **Broad categories**: "research", "meetings", "writing"
+- **Specific topics**: "transformer", "CNN", "optimization"
+- **Project names**: "project-alpha", "paper-submission"
+- **Time periods**: "week1", "month3", "semester1"
+
+### Compilation Strategies
+- **Daily**: Individual entry review
+- **Weekly**: `./diary tags "week1" "week2"`
+- **Monthly**: `./diary compile --year 2025`
+- **Project**: `./diary tags "project-name"`
+- **Topic**: `./diary tags "specific-research-area"`
+
+---
+
+**Happy researching! 📚✨**
+
+For questions or issues, check the troubleshooting section or examine the simple `diary` script source code.
