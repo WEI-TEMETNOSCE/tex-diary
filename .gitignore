@@ -92,3 +92,6 @@ Thumbs.db
 *.bak
 *.backup
 *~
+
+# GitHub tools directory (local/temporary)
+github_tools/

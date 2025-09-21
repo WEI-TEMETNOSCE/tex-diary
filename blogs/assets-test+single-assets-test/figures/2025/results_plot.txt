@@ -1,4 +1,0 @@
-Performance Results:
-Method A: 85.2%
-Method B: 89.7%
-Method C: 92.1% (Our approach)

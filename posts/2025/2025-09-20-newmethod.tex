@@ -1,6 +1,6 @@
 % Add your research tags below (comma-separated, case-insensitive)
 % Year is automatically added as a tag
-%<TAGs>: 2025
+%<TAGs>: 2025, machine learning
 %<TOPICs>: 
 
 \documentclass[11pt,letterpaper]{article}
@@ -15,12 +15,16 @@
 
 
 \begin{document}
-\href{run:2025-09-20-newmethod.tex}{\Huge September 20} %##@@TitleDateString@@##
+\href{run:2025-09-20-newmethod.tex}{\Huge September 20} 
 
-\section{New Method}
+\section{Machine Learning}
 
-We have a citation \cite{research_methods2024}.
+We have a citation \cite{research_methods2024} here.  Solve this problem: 
+
+\bb 
+\min_{\theta} \sum_{i=1}^n (f_\theta(x\datai) - y\datai)^2. 
+\ee 
 
 \bibliographystyle{apalike} 
-\bibliography{assets/bibliography/reference}%##@@BibFileString@@##
+\bibliography{assets/bib/reference}
 \end{document}
