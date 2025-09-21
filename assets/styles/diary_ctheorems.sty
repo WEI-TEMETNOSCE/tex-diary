@@ -1,7 +1,7 @@
-\ProvidesPackage{diary_theorems}
-%%%%%%%%% RESEARCH DIARY - THEOREM ENVIRONMENTS %%%%%%%%%%%%
+\ProvidesPackage{diary_ctheorems}
+%%%%%%%%% RESEARCH DIARY - COLORED THEOREM ENVIRONMENTS %%%%%%%%%%%%
 %% Beautiful colored theorem boxes and enhanced theorem environments
-%% Provides styled alternatives to the basic theorems in diary_base.sty
+%% Provides colored alternatives to the basic theorems in diary_base.sty
 %% Load this AFTER diary_base.sty for enhanced visual theorem environments
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -44,18 +44,18 @@
 %% These provide beautiful colored alternatives to basic theorems
 
 %% Green Box Environments (Definitions and Notes)
-\@ifundefined{styledefinition}{
-  \declaretheorem[style=thmgreenbox, name=Definition]{styledefinition}
+\@ifundefined{cdefinition}{
+  \declaretheorem[style=thmgreenbox, name=Definition]{cdefinition}
 }{}
 
-\@ifundefined{styleremark}{
-  \declaretheorem[style=thmgreenbox, numbered=no, name=Remark]{styleremark*}
-  \declaretheorem[style=thmgreenbox, name=Remark]{styleremark}
+\@ifundefined{cremark}{
+  \declaretheorem[style=thmgreenbox, numbered=no, name=Remark]{cremark*}
+  \declaretheorem[style=thmgreenbox, name=Remark]{cremark}
 }{}
 
-\@ifundefined{stylenote}{
-  \declaretheorem[style=thmgreenbox, numbered=no, name=Note]{stylenote*}
-  \declaretheorem[style=thmgreenbox, name=Note]{stylenote}
+\@ifundefined{cnote}{
+  \declaretheorem[style=thmgreenbox, numbered=no, name=Note]{cnote*}
+  \declaretheorem[style=thmgreenbox, name=Note]{cnote}
 }{}
 
 %% Orange Box Environments (Background Information)
@@ -65,27 +65,30 @@
 \declaretheorem[style=thmorangebox, name=Notation]{notation}
 
 %% Blue Box Environments (Examples and Explanations)
-\@ifundefined{styledexample}{
-  \declaretheorem[style=thmbluebox, numbered=no, name=Example]{styledexample*}
-  \declaretheorem[style=thmbluebox, name=Example]{styledexample}
+\@ifundefined{cexample}{
+  \declaretheorem[style=thmbluebox, numbered=no, name=Example]{cexample*}
+  \declaretheorem[style=thmbluebox, name=Example]{cexample}
 }{}
 
 %% Red Box Environments (Main Results)
-\@ifundefined{styledproposition}{
-  \declaretheorem[style=thmredbox, name=Proposition]{styledproposition} 
+\@ifundefined{cproposition}{
+  \declaretheorem[style=thmredbox, name=Proposition]{cproposition} 
 }{}
 
-\@ifundefined{styledtheorem}{
-  \declaretheorem[style=thmredbox, name=Theorem]{styledtheorem}
+\@ifundefined{ctheorem}{
+  \declaretheorem[style=thmredbox, name=Theorem]{ctheorem}
 }{}
 
-\@ifundefined{styledlemma}{
-  \declaretheorem[style=thmredbox, name=Lemma]{styledlemma}
+\@ifundefined{clemma}{
+  \declaretheorem[style=thmredbox, name=Lemma]{clemma}
 }{}
 
-\@ifundefined{styledcorollary}{
-  \declaretheorem[style=thmredbox, name=Corollary]{styledcorollary}
+\@ifundefined{ccorollary}{
+  \declaretheorem[style=thmredbox, name=Corollary]{ccorollary}
 }{}
+
+%% NOTE: Standard theorem environments (theorem, lemma, etc.) remain unchanged
+%% Use c-prefixed versions (ctheorem, clemma, etc.) for colored boxes
 
 %% SPECIAL THEOREM ENVIRONMENTS (always available)
 \newtheorem*{uovt}{UOVT}
@@ -127,9 +130,8 @@
   }
 ]{thmexplanationbox}
 
-%% Enhanced proof environment (replaces standard proof)
-\declaretheorem[style=thmproofbox, name=Proof]{replacementproof}
-\renewenvironment{proof}[1][\proofname]{\vspace{-10pt}\begin{replacementproof}}{\end{replacementproof}}
+%% Colored proof environment (cproof) - standard proof remains unchanged
+\declaretheorem[style=thmproofbox, name=Proof]{cproof}
 
 %% Explanation environment for detailed explanations
 \declaretheorem[style=thmexplanationbox, name=Explanation]{tmpexplanation}
@@ -180,7 +182,8 @@
 \makeatother
 
 %% USAGE NOTES:
-%% - For basic theorems: Use environments from diary_base.sty (thm, lem, cor, etc.)
-%% - For styled theorems: Use styled* environments (styledtheorem, styledlemma, etc.)
+%% - For basic theorems: Use environments from diary_base.sty (thm, lem, cor, etc.) or standard (theorem, lemma, etc.)
+%% - For colored theorems: Use c* environments (ctheorem, clemma, ccorollary, cdefinition, etc.)
+%% - For proofs: Use standard \begin{proof} or colored \begin{cproof}
 %% - For custom boxes: Use cbox environment with optional color and title
 %% - All environments are designed to work together without conflicts

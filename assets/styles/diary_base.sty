@@ -82,7 +82,7 @@
 \lfoot{\textsc{\institution}}
 
 %% BASIC THEOREM ENVIRONMENTS (simple, no styling)
-%% For styled theorems, load diary_theorems.sty
+%% For styled theorems, load diary_ctheorems.sty
 \newtheorem{thm}{Theorem}[section]
 \newtheorem{cor}[thm]{Corollary}
 \newtheorem{mydef}[thm]{Definition}
@@ -92,6 +92,18 @@
 \newtheorem{exa}[thm]{Example} 
 \newtheorem{ass}[thm]{Assumption}
 \newtheorem{pro}[thm]{Proposition}
+
+%% FULL NAME ALIASES (same as short names above)
+%% These provide standard full names that map to the short name environments
+\newtheorem{theorem}[thm]{Theorem}
+\newtheorem{corollary}[thm]{Corollary}
+\newtheorem{definition}[thm]{Definition}
+\newtheorem{lemma}[thm]{Lemma}
+\newtheorem{fact}[thm]{Fact}
+\newtheorem{claim}[thm]{Claim}
+\newtheorem{example}[thm]{Example}
+\newtheorem{assumption}[thm]{Assumption}
+\newtheorem{proposition}[thm]{Proposition}
 
 %% Fix theorem spacing issues
 \begingroup
@@ -104,7 +116,7 @@
 \endgroup
 
 %% BASIC FRAMED THEOREM ENVIRONMENTS
-%% These provide simple framing - for colored boxes, use diary_theorems.sty
+%% These provide simple framing - for colored boxes, use diary_ctheorems.sty
 \newenvironment{fthm}{\hspace{1\baselineskip}\begin{mdframed}\hspace{-1\baselineskip}\begin{thm}} {\end{thm}\end{mdframed}}
 \newenvironment{flem}{\hspace{1\baselineskip}\begin{mdframed}\hspace{-1\baselineskip}\begin{lem}} {\end{lem}\end{mdframed}}
 \newenvironment{fcor}{\hspace{1\baselineskip}\begin{mdframed}\hspace{-1\baselineskip}\begin{cor}} {\end{cor}\end{mdframed}}
