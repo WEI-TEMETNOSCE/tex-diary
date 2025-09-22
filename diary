@@ -507,6 +507,58 @@ def cmd_tags(args):
             
     except Exception as e: print(f"Error compiling by tags: {e}"); sys.exit(1)
 
+def preprocess_latex_for_pandoc_simple(tex_file, output_dir):
+    """Preprocess LaTeX file to handle custom \def commands before pandoc"""
+    try:
+        with open(tex_file, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        # Replace \bb...\ee with proper align* environments
+        import re
+        
+        replacements_made = 0
+        
+        # Handle \bb content \ee -> \begin{align*} content \end{align*}
+        bb_pattern = r'\\bb\s*(.*?)\\ee'
+        bb_matches = len(re.findall(bb_pattern, content, re.DOTALL))
+        if bb_matches > 0:
+            content = re.sub(bb_pattern, r'\\begin{align*}\g<1>\\end{align*}', content, flags=re.DOTALL)
+            replacements_made += bb_matches
+            print(f"    🔧 Preprocessed \\bb...\\ee commands ({bb_matches} times)")
+        
+        # Handle \bba content \eea -> \begin{align} content \end{align}
+        bba_pattern = r'\\bba\s*(.*?)\\eea'
+        bba_matches = len(re.findall(bba_pattern, content, re.DOTALL))
+        if bba_matches > 0:
+            content = re.sub(bba_pattern, r'\\begin{align}\g<1>\\end{align}', content, flags=re.DOTALL)
+            replacements_made += bba_matches
+            print(f"    🔧 Preprocessed \\bba...\\eea commands ({bba_matches} times)")
+        
+        # Handle \bbb content \eee -> \begin{align} content \end{align}
+        bbb_pattern = r'\\bbb\s*(.*?)\\eee'
+        bbb_matches = len(re.findall(bbb_pattern, content, re.DOTALL))
+        if bbb_matches > 0:
+            content = re.sub(bbb_pattern, r'\\begin{align}\g<1>\\end{align}', content, flags=re.DOTALL)
+            replacements_made += bbb_matches
+            print(f"    🔧 Preprocessed \\bbb...\\eee commands ({bbb_matches} times)")
+        
+        # Create the preprocessed file in output directory
+        temp_file = output_dir / tex_file.name
+        with open(temp_file, 'w', encoding='utf-8') as f:
+            f.write(content)
+        
+        if replacements_made > 0:
+            print(f"    📊 Total LaTeX preprocessing: {replacements_made} replacements")
+        
+        return temp_file
+        
+    except Exception as e:
+        print(f"    ⚠️  Could not preprocess LaTeX: {e}")
+        # Fall back to simple copy
+        temp_file = output_dir / tex_file.name
+        shutil.copy(tex_file, temp_file)
+        return temp_file
+
 def compile_single_entry_to_html(tex_file, output_dir):
     """Compile a single diary entry to HTML"""
     if not shutil.which('pandoc'): raise RuntimeError("pandoc not found")
@@ -518,9 +570,8 @@ def compile_single_entry_to_html(tex_file, output_dir):
     try:
         os.chdir(output_dir)
         
-        # Copy the tex file to output directory temporarily
-        temp_tex = output_dir / tex_file.name
-        shutil.copy(tex_file, temp_tex)
+        # Preprocess the tex file to handle \def commands, then copy to output directory
+        temp_tex = preprocess_latex_for_pandoc_simple(tex_file, output_dir)
         
         # Build pandoc command for individual entry (simplified for individual posts)
         cmd = ['pandoc', tex_file.name, '-o', html_file.name,
@@ -586,20 +637,58 @@ def compile_single_entry_to_html(tex_file, output_dir):
     
     return html_file if html_file.exists() else None
 
-def create_blog_post_css():
-    """Create CSS for individual blog posts"""
-    return """
-/* Blog Post Styling */
-body {
-    font-family: 'Georgia', 'Times New Roman', serif;
-    line-height: 1.6;
-    max-width: 800px;
-    margin: 0 auto;
-    padding: 2rem;
-    color: #333;
-    background-color: #fff;
-}
+def load_css_template(template_name):
+    """Load CSS template from assets/html_templates directory"""
+    base_dir = get_base_dir()
+    template_path = base_dir / "assets" / "html_templates" / f"{template_name}.css"
+    
+    try:
+        with open(template_path, 'r', encoding='utf-8') as f:
+            return f.read()
+    except FileNotFoundError:
+        print(f"    ⚠️  CSS template '{template_name}' not found, using fallback")
+        return create_fallback_css(template_name)
+    except Exception as e:
+        print(f"    ⚠️  Error loading CSS template: {e}")
+        return create_fallback_css(template_name)
 
+def create_fallback_css(template_name):
+    """Create basic fallback CSS if template file is missing"""
+    if 'index' in template_name:
+        return """
+body { font-family: Georgia, serif; max-width: 1000px; margin: 0 auto; padding: 2rem; }
+h1 { color: #2c3e50; text-align: center; }
+.post-card { margin: 1rem 0; padding: 1rem; border-left: 4px solid #3498db; }
+.post-title a { color: #2c3e50; text-decoration: none; }
+.post-date { color: #7f8c8d; font-size: 0.9em; }
+"""
+    else:
+        return """
+body { font-family: Georgia, serif; max-width: 800px; margin: 0 auto; padding: 2rem; }
+h1 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 0.5rem; }
+code { background: #f8f9fa; padding: 0.2rem 0.4rem; border-radius: 3px; }
+a { color: #3498db; text-decoration: none; }
+img { max-width: 100%; height: auto; }
+"""
+
+def create_blog_post_css_enhanced():
+    """Load enhanced blog post CSS from template file"""
+    return load_css_template('blog_post')
+
+def create_blog_post_css():
+    """Load simple blog post CSS from template file"""
+    return load_css_template('blog_post_simple')
+
+def create_blog_index_css(compact=False):
+    """Load blog index CSS from template file"""
+    if compact:
+        return load_css_template('blog_index_compact')
+    else:
+        return load_css_template('blog_index')
+
+
+# CSS has been moved to template files - removing orphaned CSS below
+"""
 h1 {
     color: #2c3e50;
     border-bottom: 3px solid #3498db;
@@ -717,33 +806,188 @@ code {
 }
 """
 
-def create_blog_index_css():
-    """Create CSS for blog index page"""
-    return """
-/* Blog Index Styling */
-body {
-    font-family: 'Georgia', 'Times New Roman', serif;
-    line-height: 1.6;
-    max-width: 900px;
-    margin: 0 auto;
-    padding: 2rem;
-    color: #333;
-    background-color: #fff;
-}
+# End of orphaned CSS - all CSS moved to template files
 
-.header {
-    text-align: center;
-    margin-bottom: 3rem;
-    padding-bottom: 2rem;
-    border-bottom: 3px solid #3498db;
-}
+def extract_title_and_excerpt(tex_file):
+    """Extract title and excerpt from LaTeX file"""
+    try:
+        with open(tex_file, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        # Extract title from \section{} or similar
+        import re
+        title_match = re.search(r'\\section\{([^}]+)\}', content)
+        if title_match:
+            title = title_match.group(1)
+        else:
+            # Fallback to filename
+            title = tex_file.stem.replace('-', ' ').title()
+        
+        # Extract first paragraph as excerpt
+        # Look for text after \begin{document} or after title
+        content_start = content.find('\\begin{document}')
+        if content_start != -1:
+            content_part = content[content_start:]
+            # Find first substantial text paragraph
+            lines = content_part.split('\n')
+            excerpt_lines = []
+            for line in lines:
+                clean_line = line.strip()
+                if clean_line and not clean_line.startswith('\\') and not clean_line.startswith('%'):
+                    excerpt_lines.append(clean_line)
+                    if len(' '.join(excerpt_lines)) > 100:
+                        break
+            
+            excerpt = ' '.join(excerpt_lines)[:200] + ('...' if len(' '.join(excerpt_lines)) > 200 else '')
+        else:
+            excerpt = f"Research diary entry from {tex_file.stem}"
+        
+        return title, excerpt
+        
+    except Exception as e:
+        print(f"    ⚠️  Could not extract title/excerpt: {e}")
+        return tex_file.stem.replace('-', ' ').title(), "Research diary entry"
 
-.header h1 {
-    color: #2c3e50;
-    font-size: 2.5rem;
-    margin-bottom: 0.5rem;
-}
+# Removed duplicate function with embedded CSS - using template-based version below
 
+def compile_single_entry_to_html_with_mathjax(tex_file, output_dir):
+    """This function has been moved - see below"""
+    pass
+
+def extract_title_and_excerpt(tex_file):
+    """Extract title and excerpt from LaTeX file - duplicate function"""
+    # This is a duplicate - the real function is below
+    pass
+
+def create_blog_index(blog_dir, posts_info, tags, config):
+    """Create blog index - duplicate function"""
+    # This is a duplicate - the real function is below  
+    pass
+
+# All CSS has been moved to template files in assets/html_templates/
+
+# Real functions start below - duplicates and CSS removed above
+
+def create_blog_index(blog_dir, posts_info, tags, config):
+    """This is a duplicate - jumping to real function below"""
+    pass
+
+def extract_title_and_excerpt(tex_file):
+    """Extract title and excerpt from a LaTeX file"""
+    try:
+        with open(tex_file, 'r') as f:
+            content = f.read()
+        
+        # Extract title from \section{} command
+        import re
+        title_match = re.search(r'\\section\{([^}]+)\}', content)
+        if title_match:
+            title = title_match.group(1)
+        else:
+            # Fallback to filename
+            title = tex_file.stem.replace('-', ' ').title()
+        
+        # Extract excerpt from first few non-command lines
+        lines = content.split('\n')
+        excerpt_lines = []
+        
+        in_document = False
+        for line in lines:
+            line = line.strip()
+            if '\\begin{document}' in line:
+                in_document = True
+                continue
+            if in_document and line and not line.startswith('\\') and not line.startswith('%'):
+                if len(line) > 10:  # Skip very short lines
+                    excerpt_lines.append(line)
+                    if len(' '.join(excerpt_lines)) > 150:
+                        break
+            
+            if excerpt_lines:
+                excerpt = ' '.join(excerpt_lines)
+                excerpt = excerpt[:200] + "..." if len(excerpt) > 200 else excerpt
+                return title, excerpt
+        
+        return title, "Research diary entry..."
+    except:
+        return tex_file.stem.replace('-', ' ').title(), "Research diary entry..."
+
+def create_blog_index(blog_dir, posts_info, tags, config, compact=False):
+    """Create the blog index.html file"""
+    index_html = blog_dir / "index.html"
+    
+    # Sort posts by date (newest first)
+    posts_info.sort(key=lambda x: x['date'], reverse=True)
+    
+    html_content = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{config.get('author', 'Research Student')}'s Research Diary</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>{config.get('author', 'Research Student')}'s Research Diary</h1>
+            <div class="blog-meta">
+                <p>{config.get('institution', 'University')} • {len(posts_info)} entries</p>
+            </div>
+        </div>"""
+    
+    if compact:
+        # Compact table-of-contents style
+        html_content += """
+        <ul class="posts-list">"""
+        
+        for post in posts_info:
+            html_content += f"""
+            <li class="post-item">
+                <div class="post-date">{post['date'].strftime('%m/%d')}</div>
+                <h2 class="post-title">
+                    <a href="posts/{post['url']}">{post['title']}</a>
+                </h2>
+            </li>"""
+        
+        html_content += """
+        </ul>"""
+    else:
+        # Regular card-based layout
+        html_content += """
+        <div class="posts-grid">"""
+        
+        for post in posts_info:
+            tags_html = ''.join([f'<a href="#" class="tag">{tag}</a>' for tag in post.get('tags', [])])
+            html_content += f"""
+            <div class="post-card">
+                <h2 class="post-title">
+                    <a href="posts/{post['url']}">{post['title']}</a>
+                </h2>
+                <div class="post-date">{post['date'].strftime('%B %d, %Y')}</div>
+                <div class="post-excerpt">{post['excerpt']}</div>
+                <div class="post-tags">{tags_html}</div>
+            </div>"""
+        
+        html_content += """
+        </div>"""
+    
+    html_content += """
+        
+        <div class="footer">
+            <p>Generated with LaTeX Research Diary</p>
+        </div>
+    </div>
+</body>
+</html>"""
+    
+    with open(index_html, 'w', encoding='utf-8') as f:
+        f.write(html_content)
+    
+    return index_html
+
+"""
+# More orphaned CSS below - commented out
 .header .subtitle {
     color: #7f8c8d;
     font-size: 1.2rem;
@@ -882,7 +1126,7 @@ def extract_title_and_excerpt(tex_file):
     except:
         return tex_file.stem.replace('-', ' ').title(), "Research diary entry..."
 
-def create_blog_index(blog_dir, posts_info, tags, config):
+def create_blog_index(blog_dir, posts_info, tags, config, compact=False):
     """Create the blog index.html file"""
     index_html = blog_dir / "index.html"
     
@@ -908,11 +1152,33 @@ def create_blog_index(blog_dir, posts_info, tags, config):
         <strong>{len(posts_info)} posts</strong> in this collection
     </div>
     
-    <div class="post-list">
 """
     
-    for post in posts_info:
-        html_content += f"""
+    if compact:
+        # Compact table-of-contents style
+        html_content += """
+        <ul class="posts-list">"""
+        
+        for post in posts_info:
+            # Use short date format for compact mode
+            short_date = post['date'].strftime('%m/%d') if hasattr(post['date'], 'strftime') else post.get('formatted_date', '').split(',')[0]
+            html_content += f"""
+            <li class="post-item">
+                <div class="post-date">{short_date}</div>
+                <h2 class="post-title">
+                    <a href="posts/{post['html_file']}">{post['title']}</a>
+                </h2>
+            </li>"""
+        
+        html_content += """
+        </ul>"""
+    else:
+        # Regular layout with excerpts and tags
+        html_content += """
+        <div class="post-list">"""
+        
+        for post in posts_info:
+            html_content += f"""
         <article class="post-item">
             <h2 class="post-title">
                 <a href="posts/{post['html_file']}">{post['title']}</a>
@@ -921,13 +1187,16 @@ def create_blog_index(blog_dir, posts_info, tags, config):
             <div class="post-excerpt">{post['excerpt']}</div>
             <div class="post-tags">
 """
-        for tag in post['tags']:
-            html_content += f'<span class="tag">{tag}</span>'
-        
-        html_content += """
+            for tag in post['tags']:
+                html_content += f'<span class="tag">{tag}</span>'
+            
+            html_content += """
             </div>
         </article>
 """
+        
+        html_content += """
+        </div>"""
     
     html_content += f"""
     </div>
@@ -942,6 +1211,310 @@ def create_blog_index(blog_dir, posts_info, tags, config):
         f.write(html_content)
     
     return index_html
+
+def compile_single_entry_to_html_with_mathjax(tex_file, output_dir):
+    """Clean LaTeX to HTML compilation with MathJax custom command support"""
+    if not shutil.which('pandoc'): 
+        raise RuntimeError("pandoc not found")
+    
+    base_dir = get_base_dir()
+    html_file = output_dir / f"{tex_file.stem}.html"
+    original_dir = os.getcwd()
+    
+    try:
+        os.chdir(output_dir)
+        print(f"    🚀 Converting {tex_file.name} to HTML with MathJax...")
+        
+        # Create a simplified version of the tex file for pandoc
+        simplified_tex = create_simplified_tex_for_pandoc(tex_file, base_dir)
+        
+        # Simple, clean pandoc conversion using simplified tex
+        pandoc_cmd = [
+            'pandoc', str(simplified_tex), '-o', html_file.name,
+            '--standalone', '--mathjax',
+            '--from', 'latex',
+            '--to', 'html5',
+            '--css', 'post.css'
+        ]
+        
+        result = subprocess.run(pandoc_cmd, capture_output=True, text=True, cwd=output_dir)
+        
+        # Clean up temporary simplified file
+        if simplified_tex.exists():
+            simplified_tex.unlink()
+        
+        if result.returncode == 0 and html_file.exists():
+            # Enhance the HTML with custom MathJax configuration
+            enhance_html_with_custom_mathjax(html_file)
+            print(f"    ✅ HTML conversion successful: {html_file.name}")
+            return html_file
+        else:
+            print(f"    ❌ HTML conversion failed: {result.stderr[:200]}...")
+            return None
+            
+    except Exception as e:
+        print(f"    ❌ Error in LaTeX processing: {e}")
+        return None
+    finally:
+        os.chdir(original_dir)
+
+def create_simplified_tex_for_pandoc(tex_file, base_dir):
+    """Create a simplified version of the tex file that pandoc can handle"""
+    import re
+    
+    print(f"    📝 Creating simplified version of {tex_file.name}...")
+    
+    try:
+        with open(tex_file, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        # Remove problematic includes and usepackages
+        simplified_content = content
+        
+        # Remove custom style includes
+        simplified_content = re.sub(r'\\input\{.*?diary.*?\}', '', simplified_content)
+        simplified_content = re.sub(r'\\usepackage\{.*?diary.*?\}', '', simplified_content)
+        
+        # Remove problematic custom commands that cause issues
+        problematic_commands = [
+            r'\\newcommand\{\\workingDate\}.*?\n',
+            r'\\newcommand\{\\userName\}.*?\n',
+            r'\\newcommand\{\\institution\}.*?\n',
+            r'\\definecolorbox.*?\n',
+        ]
+        
+        for pattern in problematic_commands:
+            simplified_content = re.sub(pattern, '', simplified_content, flags=re.DOTALL)
+        
+        # Keep essential document structure but simplify
+        # Replace custom theorem environments with simple versions
+        simplified_content = re.sub(r'\\begin\{ctheorem\}', r'\\begin{quote}\\textbf{Theorem:} ', simplified_content)
+        simplified_content = re.sub(r'\\end\{ctheorem\}', r'\\end{quote}', simplified_content)
+        
+        simplified_content = re.sub(r'\\begin\{cproof\}', r'\\begin{quote}\\textbf{Proof:} ', simplified_content)
+        simplified_content = re.sub(r'\\end\{cproof\}', r'\\end{quote}', simplified_content)
+        
+        # Add basic document class if missing
+        if '\\documentclass' not in simplified_content:
+            simplified_content = '\\documentclass{article}\n\\usepackage{amsmath}\n\\usepackage{amssymb}\n\\begin{document}\n' + simplified_content + '\n\\end{document}'
+        
+        # Create temporary simplified file
+        simplified_file = tex_file.parent / f"{tex_file.stem}_simplified.tex"
+        with open(simplified_file, 'w', encoding='utf-8') as f:
+            f.write(simplified_content)
+        
+        print(f"    ✅ Created simplified tex: {simplified_file.name}")
+        return simplified_file
+        
+    except Exception as e:
+        print(f"    ⚠️  Failed to create simplified tex: {e}")
+        return tex_file  # Fall back to original
+
+def enhance_html_with_custom_mathjax(html_file):
+    """Add custom MathJax configuration to handle custom LaTeX commands"""
+    import re
+    
+    # Custom MathJax configuration for your commands
+    mathjax_config = r"""
+<script>
+MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']],
+    displayMath: [['$$', '$$'], ['\\[', '\\]']],
+    macros: {
+      // Custom mathematical operators
+      dd: "\\nabla",
+      ind: "\\mathbb{I}",
+      
+      // Common number sets
+      RR: "\\mathbb{R}",
+      CC: "\\mathbb{C}",
+      NN: "\\mathbb{N}",
+      PP: "\\mathbb{P}",
+      E: "\\mathbb{E}",
+      D: "\\mathbb{D}",
+      X: "\\mathcal{X}",
+      B: "\\mathcal{B}",
+      F: "\\mathcal{F}",
+      M: "\\mathbb{M}",
+      
+      // Probability and statistics
+      prob: "\\mathrm{Pr}",
+      pr: "\\mathrm{Pr}",
+      var: "\\mathrm{var}",
+      Var: "\\mathrm{Var}",
+      cov: "\\mathrm{cov}",
+      Cov: "\\mathrm{Cov}",
+      corr: "\\mathrm{corr}",
+      Corr: "\\mathrm{Corr}",
+      normal: "\\mathcal{N}",
+      MSE: "\\mathrm{MSE}",
+      KL: "\\mathrm{KL}",
+      
+      // Differential operators
+      df: "\\mathrm{d}",
+      dt: "\\mathrm{d}t",
+      dW: "\\mathrm{d}W",
+      dno: "\\mathrm{d}",
+      tdd: "\\tilde{\\nabla}",
+      ddt: "\\frac{\\mathrm{d}}{\\mathrm{d}t}",
+      
+      // Vector notation
+      V: "\\mathbf",
+      vx: "\\boldsymbol{x}",
+      vv: ["\\boldsymbol{#1}", 1],
+      
+      // Mathematical functions
+      trace: "\\mathrm{trace}",
+      diag: "\\mathrm{diag}",
+      sign: "\\mathrm{sign}",
+      
+      // Shortcuts
+      cd: "\\mid",
+      la: "\\langle",
+      ra: "\\rangle",
+      set: ["\\mathcal{#1}", 1],
+      funcset: ["\\mathcal{#1}", 1],
+      opt: ["\\mathcal{#1}", 1],
+      f: ["\\frac{#1}{#2}", 2],
+      
+      // Renewed commands
+      P: "\\mathcal{P}",
+      H: "\\mathcal{H}",
+      tt: "^\\top",
+      d: "\\mathrm{d}",
+      div: "\\nabla\\cdot",
+      
+      // Custom operators
+      argmax: "\\operatorname*{arg\\,max}",
+      argmin: "\\operatorname*{arg\\,min}",
+      median: "\\operatorname{median}",
+      mode: "\\operatorname{mode}"
+    },
+    processEscapes: true,
+    processEnvironments: true
+  },
+  options: {
+    ignoreHtmlClass: "tex2jax_ignore",
+    processHtmlClass: "tex2jax_process"
+  }
+};
+</script>
+"""
+    
+    try:
+        # Read the HTML file
+        with open(html_file, 'r', encoding='utf-8') as f:
+            html_content = f.read()
+        
+        # Insert the custom MathJax configuration BEFORE the MathJax script loads
+        mathjax_script_pattern = r'<script\s+src="[^"]*mathjax[^"]*"[^>]*></script>'
+        
+        if re.search(mathjax_script_pattern, html_content):
+            # Insert our config before the MathJax script
+            html_content = re.sub(mathjax_script_pattern, mathjax_config + '\n\\g<0>', html_content)
+        else:
+            # Fallback: insert before </head> tag
+            if '</head>' in html_content:
+                html_content = html_content.replace('</head>', mathjax_config + '\n</head>')
+            else:
+                # If no </head> tag, insert after <head> or at the beginning
+                if '<head>' in html_content:
+                    html_content = html_content.replace('<head>', '<head>\n' + mathjax_config)
+                else:
+                    html_content = mathjax_config + '\n' + html_content
+        
+        # Write back the enhanced HTML
+        with open(html_file, 'w', encoding='utf-8') as f:
+            f.write(html_content)
+        
+        print(f"    🎨 Enhanced HTML with custom MathJax configuration")
+        
+    except Exception as e:
+        print(f"    ⚠️  Failed to enhance HTML with MathJax config: {e}")
+        # Continue anyway - the basic HTML should still work
+
+def add_simple_mathjax_commands(html_file):
+    """Add simple MathJax custom commands and fix LaTeX parsing"""
+    try:
+        with open(html_file, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        # Only add if MathJax is already present
+        if 'mathjax' in content.lower():
+            print(f"    🔧 Processing MathJax commands in {html_file.name}...")
+            
+            # STEP 1: Direct replacement of custom commands in the HTML
+            import re
+            
+            # Replace custom commands directly in the math content
+            replacements_made = 0
+            
+            # Replace \dd with \nabla
+            dd_pattern = r'\\dd(?![a-zA-Z])'
+            dd_matches = len(re.findall(dd_pattern, content))
+            if dd_matches > 0:
+                content = re.sub(dd_pattern, r'\\nabla', content)
+                replacements_made += dd_matches
+                print(f"      ✅ Replaced \\dd with \\nabla ({dd_matches} times)")
+            
+            # Replace \ind with \mathbb{I}
+            ind_pattern = r'\\ind(?![a-zA-Z])'
+            ind_matches = len(re.findall(ind_pattern, content))
+            if ind_matches > 0:
+                content = re.sub(ind_pattern, r'\\mathbb{I}', content)
+                replacements_made += ind_matches
+                print(f"      ✅ Replaced \\ind with \\mathbb{{I}} ({ind_matches} times)")
+            
+            # Replace \DeclareMathOperator commands (argmax, argmin, etc.)
+            mathop_replacements = {
+                r'\\argmax(?![a-zA-Z])': r'\\operatorname*{arg\\,max}',
+                r'\\argmin(?![a-zA-Z])': r'\\operatorname*{arg\\,min}',
+                r'\\median(?![a-zA-Z])': r'\\operatorname{median}',
+                r'\\mode(?![a-zA-Z])': r'\\operatorname{mode}',
+            }
+            
+            for pattern, replacement in mathop_replacements.items():
+                matches = len(re.findall(pattern, content))
+                if matches > 0:
+                    content = re.sub(pattern, replacement, content)
+                    replacements_made += matches
+                    cmd_name = pattern.split('(?!')[0].replace('\\\\', '\\')
+                    print(f"      ✅ Replaced {cmd_name} ({matches} times)")
+            
+            # Note: \def delimited commands (\bb...\ee) are now handled in LaTeX preprocessing
+            
+            # Replace other common commands
+            common_replacements = {
+                r'\\RR(?![a-zA-Z])': r'\\mathbb{R}',
+                r'\\CC(?![a-zA-Z])': r'\\mathbb{C}',
+                r'\\NN(?![a-zA-Z])': r'\\mathbb{N}',
+                r'\\PP(?![a-zA-Z])': r'\\mathbb{P}',
+                r'\\E(?![a-zA-Z])': r'\\mathbb{E}',
+                r'\\prob(?![a-zA-Z])': r'\\mathrm{Pr}',
+                r'\\var(?![a-zA-Z])': r'\\mathrm{var}',
+                r'\\Var(?![a-zA-Z])': r'\\mathrm{Var}',
+            }
+            
+            for pattern, replacement in common_replacements.items():
+                matches = len(re.findall(pattern, content))
+                if matches > 0:
+                    content = re.sub(pattern, replacement, content)
+                    replacements_made += matches
+                    cmd_name = pattern.split('(?!')[0].replace('\\\\', '\\')
+                    print(f"      ✅ Replaced {cmd_name} ({matches} times)")
+            
+            # Write the updated content
+            with open(html_file, 'w', encoding='utf-8') as f:
+                f.write(content)
+            
+            if replacements_made > 0:
+                print(f"    📊 Total command replacements: {replacements_made}")
+            else:
+                print(f"    ℹ️  No custom commands found to replace")
+                
+    except Exception as e:
+        print(f"    ⚠️  Could not process MathJax commands: {e}")
 
 def copy_required_assets_to_blog(blog_dir, posts_dir, base_dir):
     """Analyze HTML files and copy only the assets they actually reference"""
@@ -1050,6 +1623,8 @@ def cmd_blog(args):
             # Compile to HTML
             html_file = compile_single_entry_to_html(tex_file, posts_dir)
             if html_file:
+                # Add simple MathJax custom commands
+                add_simple_mathjax_commands(html_file)
                 # Extract metadata
                 title, excerpt = extract_title_and_excerpt(tex_file)
                 tags = extract_tags_from_file(tex_file)
@@ -1075,11 +1650,13 @@ def cmd_blog(args):
         
         # Create CSS files
         print("INFO: Creating stylesheets...")
+        # Default is compact mode, use --full flag for detailed view
+        compact_mode = not args.full
         with open(blog_dir / "style.css", 'w') as f:
-            f.write(create_blog_index_css())
+            f.write(create_blog_index_css(compact=compact_mode))
         
         with open(posts_dir / "post.css", 'w') as f:
-            f.write(create_blog_post_css())
+            f.write(create_blog_post_css_enhanced())
         
         # Copy only the assets that are actually referenced in HTML files
         # Note: HTML files expect assets relative to their location (posts/assets/...)
@@ -1087,7 +1664,7 @@ def cmd_blog(args):
         
         # Create index.html
         print("INFO: Creating blog index...")
-        index_file = create_blog_index(blog_dir, posts_info, args.tags, config)
+        index_file = create_blog_index(blog_dir, posts_info, args.tags, config, compact=compact_mode)
         
         print(f"✅ Blog created successfully!")
         print(f"📂 Blog directory: {blog_dir}")
@@ -1136,6 +1713,7 @@ def main():
     tags_parser.set_defaults(func=cmd_tags)
     blog_parser = subparsers.add_parser('blog', help='Create a blog with individual HTML posts')
     blog_parser.add_argument('tags', nargs='+', help='Tags to search for (creates blog for matching entries)')
+    blog_parser.add_argument('--full', action='store_true', help='Create full index with excerpts and tags (default is compact)')
     blog_parser.set_defaults(func=cmd_blog)
     args = parser.parse_args()
     setup_logging(args.verbose)
