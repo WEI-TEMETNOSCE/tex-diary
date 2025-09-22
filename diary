@@ -1484,7 +1484,43 @@ def add_simple_mathjax_commands(html_file):
             
             # Note: \def delimited commands (\bb...\ee) are now handled in LaTeX preprocessing
             
-            # Replace other common commands
+            # Replace commands with arguments (like \vv{x} -> \boldsymbol{x})
+            argument_replacements = {
+                r'\\vv\{([^}]+)\}': r'\\boldsymbol{\g<1>}',
+                r'\\V\{([^}]+)\}': r'\\mathbf{\g<1>}',
+                r'\\bb\{([^}]+)\}': r'\\mathbb{\g<1>}',  # for \bb{R}, \bb{C}, etc.
+                r'\\cal\{([^}]+)\}': r'\\mathcal{\g<1>}',
+                r'\\scr\{([^}]+)\}': r'\\mathscr{\g<1>}',
+            }
+            
+            for pattern, replacement in argument_replacements.items():
+                matches = len(re.findall(pattern, content))
+                if matches > 0:
+                    content = re.sub(pattern, replacement, content)
+                    replacements_made += matches
+                    cmd_name = pattern.split('\\{')[0].replace('\\\\', '\\')
+                    print(f"      ✅ Replaced {cmd_name}{{...}} ({matches} times)")
+            
+            # Replace \vv commands without braces (like \vv f -> \boldsymbol{f})
+            # This handles cases like \vv\theta, \vv f, etc.
+            # Pattern matches \vv followed by a space and letter(s), or \vv followed by \command
+            vv_patterns = [
+                (r'\\vv\s+([a-zA-Z]+)', r'\\boldsymbol{\g<1>}'),  # \vv f -> \boldsymbol{f}
+                (r'\\vv(\\[a-zA-Z]+)', r'\\boldsymbol{\g<1>}'),   # \vv\theta -> \boldsymbol{\theta}
+            ]
+            
+            vv_total_matches = 0
+            for pattern, replacement in vv_patterns:
+                matches = len(re.findall(pattern, content))
+                if matches > 0:
+                    content = re.sub(pattern, replacement, content)
+                    replacements_made += matches
+                    vv_total_matches += matches
+            
+            if vv_total_matches > 0:
+                print(f"      ✅ Replaced \\vv without braces ({vv_total_matches} times)")
+            
+            # Replace other common commands (no arguments)
             common_replacements = {
                 r'\\RR(?![a-zA-Z])': r'\\mathbb{R}',
                 r'\\CC(?![a-zA-Z])': r'\\mathbb{C}',
@@ -1494,6 +1530,9 @@ def add_simple_mathjax_commands(html_file):
                 r'\\prob(?![a-zA-Z])': r'\\mathrm{Pr}',
                 r'\\var(?![a-zA-Z])': r'\\mathrm{var}',
                 r'\\Var(?![a-zA-Z])': r'\\mathrm{Var}',
+                r'\\vx(?![a-zA-Z])': r'\\boldsymbol{x}',
+                r'\\trace(?![a-zA-Z])': r'\\mathrm{trace}',
+                r'\\diag(?![a-zA-Z])': r'\\mathrm{diag}',
             }
             
             for pattern, replacement in common_replacements.items():
