@@ -1,4 +1,0 @@
-   Input Layer    Hidden Layer    Output Layer
-      [X1] -------- [H1] -------- [Y1]
-      [X2] -------- [H2] -------- [Y2]  
-      [X3] -------- [H3] -------- [Y3]

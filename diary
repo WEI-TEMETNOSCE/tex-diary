@@ -943,56 +943,76 @@ def create_blog_index(blog_dir, posts_info, tags, config):
     
     return index_html
 
-def copy_figures_to_blog(blog_dir, matching_files, base_dir):
-    """Copy figures referenced by blog entries to the blog directory"""
-    figures_copied = set()
+def copy_required_assets_to_blog(blog_dir, posts_dir, base_dir):
+    """Analyze HTML files and copy only the assets they actually reference"""
+    import re
+    from pathlib import Path
     
-    # Create figures directory in blog
-    blog_figures_dir = blog_dir / "figures"
-    blog_figures_dir.mkdir(exist_ok=True)
+    print("INFO: Analyzing HTML files for asset dependencies...")
     
-    print("INFO: Copying figures for blog...")
+    # Find all asset references in HTML files
+    asset_refs = set()
+    html_files = list(posts_dir.glob("*.html"))
     
-    # Get unique years from matching files
-    years = set()
-    for tex_file in matching_files:
-        # Extract year from file path or name
-        year_match = re.search(r'(\d{4})', str(tex_file))
-        if year_match:
-            years.add(year_match.group(1))
-    
-    # Copy figures for each year
-    for year in years:
-        year_figures_dir = base_dir / "assets/figures" / year
-        if year_figures_dir.exists():
-            blog_year_figures = blog_figures_dir / year
-            blog_year_figures.mkdir(exist_ok=True)
-            
-            # Copy all figures from this year
-            for fig_file in year_figures_dir.iterdir():
-                if fig_file.is_file():
-                    dest_file = blog_year_figures / fig_file.name
-                    shutil.copy(fig_file, dest_file)
-                    figures_copied.add(fig_file.name)
-                    print(f"    📷 Copied {year}/{fig_file.name}")
-    
-    # Copy shared figures
-    shared_figures_dir = base_dir / "assets/figures" / "shared"
-    if shared_figures_dir.exists():
-        blog_shared_figures = blog_figures_dir / "shared"
-        blog_shared_figures.mkdir(exist_ok=True)
+    for html_file in html_files:
+        try:
+            with open(html_file, 'r', encoding='utf-8') as f:
+                content = f.read()
+                
+                # Find all assets/ references using multiple patterns
+                patterns = [
+                    r'src=["\']([^"\']*assets/[^"\']*)["\']',      # img src, script src
+                    r'href=["\']([^"\']*assets/[^"\']*)["\']',     # link href, a href
+                    r'url\(["\']?([^"\']*assets/[^"\']*)["\']?\)', # CSS url()
+                    r'assets/[^"\'>\s\)]+',                        # any bare assets/ reference
+                ]
+                
+                for pattern in patterns:
+                    matches = re.findall(pattern, content)
+                    if isinstance(matches[0] if matches else None, tuple):
+                        # Extract from capture groups
+                        asset_refs.update([match for match in matches if match])
+                    else:
+                        # Direct matches
+                        asset_refs.update(matches)
         
-        for fig_file in shared_figures_dir.iterdir():
-            if fig_file.is_file():
-                dest_file = blog_shared_figures / fig_file.name
-                shutil.copy(fig_file, dest_file)
-                figures_copied.add(fig_file.name)
-                print(f"    📷 Copied shared/{fig_file.name}")
+        except Exception as e:
+            print(f"    ⚠️  Warning: Could not parse {html_file.name}: {e}")
     
-    if figures_copied:
-        print(f"    ✅ Copied {len(figures_copied)} figures to blog")
-    else:
-        print("    📷 No figures found to copy")
+    # Clean up asset references (remove any that don't start with assets/)
+    asset_refs = {ref for ref in asset_refs if ref.startswith('assets/')}
+    
+    if not asset_refs:
+        print("    📄 No asset references found in HTML files")
+        return
+    
+    print(f"    📄 Found {len(asset_refs)} unique asset references:")
+    for ref in sorted(asset_refs):
+        print(f"      - {ref}")
+    
+    # Copy each referenced asset
+    copied_count = 0
+    missing_count = 0
+    
+    for asset_path in asset_refs:
+        source_file = base_dir / asset_path
+        dest_file = blog_dir / asset_path
+        
+        if source_file.exists():
+            # Create directory structure as needed
+            dest_file.parent.mkdir(parents=True, exist_ok=True)
+            
+            # Copy file with metadata preservation
+            shutil.copy2(source_file, dest_file)
+            copied_count += 1
+            print(f"    ✅ Copied {asset_path}")
+        else:
+            missing_count += 1
+            print(f"    ❌ Missing asset: {asset_path}")
+    
+    print(f"    📦 Asset copying complete: {copied_count} copied, {missing_count} missing")
+    
+    return copied_count, missing_count
 
 def cmd_blog(args):
     """Generate a blog with individual HTML posts and index page"""
@@ -1018,11 +1038,7 @@ def cmd_blog(args):
         
         print(f"INFO: Creating blog in {blog_dir}")
         
-        # Set up output directory (copy necessary files)
-        setup_output_directory(blog_dir)
-        
-        # Copy figures directory to blog
-        copy_figures_to_blog(blog_dir, matching_files, base_dir)
+        # Note: Skip setup_output_directory for blogs - we'll copy only required assets later
         
         # Compile individual posts
         posts_info = []
@@ -1065,6 +1081,10 @@ def cmd_blog(args):
         with open(posts_dir / "post.css", 'w') as f:
             f.write(create_blog_post_css())
         
+        # Copy only the assets that are actually referenced in HTML files
+        # Note: HTML files expect assets relative to their location (posts/assets/...)
+        copy_required_assets_to_blog(posts_dir, posts_dir, base_dir)
+        
         # Create index.html
         print("INFO: Creating blog index...")
         index_file = create_blog_index(blog_dir, posts_info, args.tags, config)
@@ -1074,6 +1094,12 @@ def cmd_blog(args):
         print(f"🌐 Index page: {index_file}")
         print(f"📄 Individual posts: {len(posts_info)} HTML files in {posts_dir}")
         print(f"🚀 Open with: open {index_file}")
+        try:
+            subprocess.run(['open', str(index_file)], check=True)
+        except subprocess.CalledProcessError:
+            print(f"WARNING: Could not open {index_file} automatically")
+        except FileNotFoundError:
+            print("WARNING: 'open' command not found - please open {index_file} manually")
         
     except Exception as e:
         print(f"Error creating blog: {e}")
