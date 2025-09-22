@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['$', '$']],
+    displayMath: [['$$', '$$']],
+    macros: {
+      dd: "\\nabla",
+      ind: "\\mathbb{I}"
+    }
+  }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js"></script>
+</head>
+<body>
+<h1>MathJax Test</h1>
+<p>Testing custom commands:</p>
+<p>$$\dd f(x) = \nabla f(x)$$</p>
+<p>$$\ind(A) = \mathbb{I}(A)$$</p>
+<p>Original commands from your file:</p>
+<p>$$\dot x = - m - \ind(mx\geq 0) x$$</p>
+<p>$$\dot m = \dd f(x) - m$$</p>
+</body>
+</html>

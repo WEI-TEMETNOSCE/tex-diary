@@ -1176,9 +1176,9 @@ def create_blog_index(blog_dir, posts_info, tags, config, compact=False):
         # Regular layout with excerpts and tags
         html_content += """
         <div class="post-list">"""
-        
-        for post in posts_info:
-            html_content += f"""
+    
+    for post in posts_info:
+        html_content += f"""
         <article class="post-item">
             <h2 class="post-title">
                 <a href="posts/{post['html_file']}">{post['title']}</a>
@@ -1187,10 +1187,10 @@ def create_blog_index(blog_dir, posts_info, tags, config, compact=False):
             <div class="post-excerpt">{post['excerpt']}</div>
             <div class="post-tags">
 """
-            for tag in post['tags']:
-                html_content += f'<span class="tag">{tag}</span>'
-            
-            html_content += """
+        for tag in post['tags']:
+            html_content += f'<span class="tag">{tag}</span>'
+        
+        html_content += """
             </div>
         </article>
 """
@@ -1434,8 +1434,87 @@ MathJax = {
         print(f"    ⚠️  Failed to enhance HTML with MathJax config: {e}")
         # Continue anyway - the basic HTML should still work
 
+def parse_latex_commands_from_files(base_dir):
+    """Parse all LaTeX command definitions from .sty and .tex files"""
+    import re
+    from pathlib import Path
+    
+    commands = {
+        'simple': {},      # \cmd -> replacement
+        'one_arg': {},     # \cmd{arg} -> replacement with \g<1>
+        'two_arg': {},     # \cmd{arg1}{arg2} -> replacement with \g<1>, \g<2>
+        'operators': {}    # \DeclareMathOperator commands
+    }
+    
+    # Find all .sty and .tex files
+    sty_files = list(base_dir.glob('**/*.sty'))
+    tex_files = list(base_dir.glob('**/*.tex'))
+    all_files = sty_files + tex_files
+    
+    print(f"    🔍 Scanning {len(all_files)} LaTeX files for command definitions...")
+    
+    total_found = 0
+    
+    for file_path in all_files:
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            # Parse \newcommand{\cmd}[n]{definition}
+            newcommand_pattern = r'\\(?:new|renew)command\{\\([^}]+)\}(?:\[(\d+)\])?\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}'
+            for match in re.finditer(newcommand_pattern, content):
+                cmd_name = match.group(1)
+                num_args = match.group(2)
+                definition = match.group(3)
+                
+                if num_args is None or num_args == '0':
+                    # Simple command with no arguments
+                    commands['simple'][cmd_name] = definition
+                elif num_args == '1':
+                    # Command with one argument
+                    # Replace #1 with \g<1> for regex replacement
+                    regex_def = definition.replace('#1', r'\g<1>')
+                    commands['one_arg'][cmd_name] = regex_def
+                elif num_args == '2':
+                    # Command with two arguments
+                    regex_def = definition.replace('#1', r'\g<1>').replace('#2', r'\g<2>')
+                    commands['two_arg'][cmd_name] = regex_def
+                
+                total_found += 1
+            
+            # Parse \DeclareMathOperator{\cmd}{definition}
+            declaremath_pattern = r'\\DeclareMathOperator\*?\{\\([^}]+)\}\{([^}]+)\}'
+            for match in re.finditer(declaremath_pattern, content):
+                cmd_name = match.group(1)
+                definition = match.group(2)
+                # Convert to \operatorname format
+                if '*' in content[match.start():match.start()+20]:  # Check if it's \DeclareMathOperator*
+                    commands['operators'][cmd_name] = f'\\operatorname*{{{definition}}}'
+                else:
+                    commands['operators'][cmd_name] = f'\\operatorname{{{definition}}}'
+                total_found += 1
+            
+            # Parse \def\cmd{definition} (simple form)
+            def_pattern = r'\\def\\([a-zA-Z]+)\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}'
+            for match in re.finditer(def_pattern, content):
+                cmd_name = match.group(1)
+                definition = match.group(2)
+                commands['simple'][cmd_name] = definition
+                total_found += 1
+                
+        except Exception as e:
+            print(f"    ⚠️  Could not parse {file_path.name}: {e}")
+    
+    print(f"    📊 Found {total_found} command definitions:")
+    print(f"      - Simple commands: {len(commands['simple'])}")
+    print(f"      - One-argument commands: {len(commands['one_arg'])}")
+    print(f"      - Two-argument commands: {len(commands['two_arg'])}")
+    print(f"      - Math operators: {len(commands['operators'])}")
+    
+    return commands
+
 def add_simple_mathjax_commands(html_file):
-    """Add simple MathJax custom commands and fix LaTeX parsing"""
+    """Add MathJax custom commands with automatic LaTeX parsing"""
     try:
         with open(html_file, 'r', encoding='utf-8') as f:
             content = f.read()
@@ -1444,66 +1523,59 @@ def add_simple_mathjax_commands(html_file):
         if 'mathjax' in content.lower():
             print(f"    🔧 Processing MathJax commands in {html_file.name}...")
             
-            # STEP 1: Direct replacement of custom commands in the HTML
-            import re
+            # Parse all LaTeX commands from files
+            base_dir = get_base_dir()
+            latex_commands = parse_latex_commands_from_files(base_dir)
             
-            # Replace custom commands directly in the math content
+            import re
             replacements_made = 0
             
-            # Replace \dd with \nabla
-            dd_pattern = r'\\dd(?![a-zA-Z])'
-            dd_matches = len(re.findall(dd_pattern, content))
-            if dd_matches > 0:
-                content = re.sub(dd_pattern, r'\\nabla', content)
-                replacements_made += dd_matches
-                print(f"      ✅ Replaced \\dd with \\nabla ({dd_matches} times)")
+            # AUTOMATIC COMMAND REPLACEMENT SYSTEM
             
-            # Replace \ind with \mathbb{I}
-            ind_pattern = r'\\ind(?![a-zA-Z])'
-            ind_matches = len(re.findall(ind_pattern, content))
-            if ind_matches > 0:
-                content = re.sub(ind_pattern, r'\\mathbb{I}', content)
-                replacements_made += ind_matches
-                print(f"      ✅ Replaced \\ind with \\mathbb{{I}} ({ind_matches} times)")
+            # 1. Replace simple commands (no arguments)
+            for cmd_name, definition in latex_commands['simple'].items():
+                try:
+                    pattern = rf'\\{re.escape(cmd_name)}(?![a-zA-Z])'
+                    matches = len(re.findall(pattern, content))
+                    if matches > 0:
+                        # Use lambda to avoid escape issues with the replacement string
+                        content = re.sub(pattern, lambda m: definition, content)
+                        replacements_made += matches
+                        print(f"      ✅ Replaced \\{cmd_name} ({matches} times)")
+                except Exception as e:
+                    print(f"      ⚠️  Error replacing \\{cmd_name}: {e}")
             
-            # Replace \DeclareMathOperator commands (argmax, argmin, etc.)
-            mathop_replacements = {
-                r'\\argmax(?![a-zA-Z])': r'\\operatorname*{arg\\,max}',
-                r'\\argmin(?![a-zA-Z])': r'\\operatorname*{arg\\,min}',
-                r'\\median(?![a-zA-Z])': r'\\operatorname{median}',
-                r'\\mode(?![a-zA-Z])': r'\\operatorname{mode}',
-            }
+            # 2. Replace one-argument commands
+            for cmd_name, definition in latex_commands['one_arg'].items():
+                try:
+                    pattern = rf'\\{re.escape(cmd_name)}\{{([^}}]+)\}}'
+                    matches = len(re.findall(pattern, content))
+                    if matches > 0:
+                        content = re.sub(pattern, lambda m: definition, content)
+                        replacements_made += matches
+                        print(f"      ✅ Replaced \\{cmd_name}{{...}} ({matches} times)")
+                except Exception as e:
+                    print(f"      ⚠️  Error replacing \\{cmd_name}{{...}}: {e}")
             
-            for pattern, replacement in mathop_replacements.items():
+            # 3. Replace two-argument commands
+            for cmd_name, definition in latex_commands['two_arg'].items():
+                pattern = rf'\\{re.escape(cmd_name)}\{{([^}}]+)\}}\{{([^}}]+)\}}'
                 matches = len(re.findall(pattern, content))
                 if matches > 0:
-                    content = re.sub(pattern, replacement, content)
+                    content = re.sub(pattern, definition, content)
                     replacements_made += matches
-                    cmd_name = pattern.split('(?!')[0].replace('\\\\', '\\')
-                    print(f"      ✅ Replaced {cmd_name} ({matches} times)")
+                    print(f"      ✅ Replaced \\{cmd_name}{{...}}{{...}} ({matches} times)")
             
-            # Note: \def delimited commands (\bb...\ee) are now handled in LaTeX preprocessing
-            
-            # Replace commands with arguments (like \vv{x} -> \boldsymbol{x})
-            argument_replacements = {
-                r'\\vv\{([^}]+)\}': r'\\boldsymbol{\g<1>}',
-                r'\\V\{([^}]+)\}': r'\\mathbf{\g<1>}',
-                r'\\bb\{([^}]+)\}': r'\\mathbb{\g<1>}',  # for \bb{R}, \bb{C}, etc.
-                r'\\cal\{([^}]+)\}': r'\\mathcal{\g<1>}',
-                r'\\scr\{([^}]+)\}': r'\\mathscr{\g<1>}',
-            }
-            
-            for pattern, replacement in argument_replacements.items():
+            # 4. Replace math operators
+            for cmd_name, definition in latex_commands['operators'].items():
+                pattern = rf'\\{re.escape(cmd_name)}(?![a-zA-Z])'
                 matches = len(re.findall(pattern, content))
                 if matches > 0:
-                    content = re.sub(pattern, replacement, content)
+                    content = re.sub(pattern, definition, content)
                     replacements_made += matches
-                    cmd_name = pattern.split('\\{')[0].replace('\\\\', '\\')
-                    print(f"      ✅ Replaced {cmd_name}{{...}} ({matches} times)")
+                    print(f"      ✅ Replaced \\{cmd_name} (operator) ({matches} times)")
             
-            # Replace \vv commands without braces (like \vv f -> \boldsymbol{f})
-            # This handles cases like \vv\theta, \vv f, etc.
-            # Pattern matches \vv followed by a space and letter(s), or \vv followed by \command
+            # 5. Special handling for \vv commands without braces (legacy support)
             vv_patterns = [
                 (r'\\vv\s+([a-zA-Z]+)', r'\\boldsymbol{\g<1>}'),  # \vv f -> \boldsymbol{f}
                 (r'\\vv(\\[a-zA-Z]+)', r'\\boldsymbol{\g<1>}'),   # \vv\theta -> \boldsymbol{\theta}
@@ -1520,37 +1592,23 @@ def add_simple_mathjax_commands(html_file):
             if vv_total_matches > 0:
                 print(f"      ✅ Replaced \\vv without braces ({vv_total_matches} times)")
             
-            # Replace other common commands (no arguments)
-            common_replacements = {
-                r'\\RR(?![a-zA-Z])': r'\\mathbb{R}',
-                r'\\CC(?![a-zA-Z])': r'\\mathbb{C}',
-                r'\\NN(?![a-zA-Z])': r'\\mathbb{N}',
-                r'\\PP(?![a-zA-Z])': r'\\mathbb{P}',
-                r'\\E(?![a-zA-Z])': r'\\mathbb{E}',
-                r'\\prob(?![a-zA-Z])': r'\\mathrm{Pr}',
-                r'\\var(?![a-zA-Z])': r'\\mathrm{var}',
-                r'\\Var(?![a-zA-Z])': r'\\mathrm{Var}',
-                r'\\vx(?![a-zA-Z])': r'\\boldsymbol{x}',
-                r'\\trace(?![a-zA-Z])': r'\\mathrm{trace}',
-                r'\\diag(?![a-zA-Z])': r'\\mathrm{diag}',
-            }
-            
-            for pattern, replacement in common_replacements.items():
-                matches = len(re.findall(pattern, content))
-                if matches > 0:
-                    content = re.sub(pattern, replacement, content)
-                    replacements_made += matches
-                    cmd_name = pattern.split('(?!')[0].replace('\\\\', '\\')
-                    print(f"      ✅ Replaced {cmd_name} ({matches} times)")
-            
-            # Write the updated content
-            with open(html_file, 'w', encoding='utf-8') as f:
-                f.write(content)
-            
             if replacements_made > 0:
                 print(f"    📊 Total command replacements: {replacements_made}")
             else:
                 print(f"    ℹ️  No custom commands found to replace")
+                
+            # Write the updated content (inside the mathjax block)
+            with open(html_file, 'w', encoding='utf-8') as f:
+                f.write(content)
+            
+            # Debug: Check if replacements actually took effect
+            if replacements_made > 0:
+                with open(html_file, 'r', encoding='utf-8') as f:
+                    check_content = f.read()
+                if 'mathbb' in check_content:
+                    print(f"      🎉 Verified: mathbb found in saved file")
+                else:
+                    print(f"      ⚠️  Warning: No mathbb found in saved file despite {replacements_made} replacements")
                 
     except Exception as e:
         print(f"    ⚠️  Could not process MathJax commands: {e}")

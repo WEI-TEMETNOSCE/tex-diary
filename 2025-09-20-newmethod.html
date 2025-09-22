@@ -20,20 +20,41 @@
       margin: 0 0.8em 0.2em -1.6em;
       vertical-align: middle;
     }
-  </style>
+    /* CSS for citations */
+    div.csl-bib-body { }
+    div.csl-entry {
+      clear: both;
+      margin-bottom: 0em;
+    }
+    .hanging-indent div.csl-entry {
+      margin-left:2em;
+      text-indent:-2em;
+    }
+    div.csl-left-margin {
+      min-width:2em;
+      float:left;
+    }
+    div.csl-right-inline {
+      margin-left:2em;
+      padding-left:1em;
+    }
+    div.csl-indent {
+      margin-left: 2em;
+    }  </style>
   <link rel="stylesheet" href="post.css" />
-  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
-  <script
-  src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js"
-  type="text/javascript"></script>
 </head>
 <body>
 <p><a href="run:2025-09-20-newmethod.tex">September 20</a></p>
 <h1 id="citation-test">Citation Test</h1>
-<p><span class="math display">\[\E[x] + \dd\vv f +  \RR^d.\]</span></p>
-<p><span class="math display">\[\vv\theta = \argmin L(\theta, \mathcal
-D).\]</span></p>
 <p>We have a citation <span class="citation"
-data-cites="research_methods2024"></span> here. Solve this problem:</p>
+data-cites="research_methods2024">(Smith and Doe 2024)</span> here.
+Solve this problem:</p>
+<div id="refs" class="references csl-bib-body hanging-indent"
+data-entry-spacing="0" role="list">
+<div id="ref-research_methods2024" class="csl-entry" role="listitem">
+Smith, John, and Jane Doe. 2024. <em>Research Methods in Computer
+Science</em>. Academic Press.
+</div>
+</div>
 </body>
 </html>
