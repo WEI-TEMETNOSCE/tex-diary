@@ -1,6 +1,6 @@
 # Research Diary System
 
-A simple, self-contained research diary system for academics and researchers. Create, organize, and compile your daily research notes into beautiful LaTeX documents.
+A latex research diary system for academics and researchers. Create, organize, and compile your daily research notes into pdfs and html. 
 
 ## ✨ Features
 
@@ -18,23 +18,28 @@ A simple, self-contained research diary system for academics and researchers. Cr
 # Make the script executable (first time only)
 chmod +x diary
 
-# Create today's diary entry
+# Create today's diary entry. 
 ./diary today
+# This would create a latex diary posts/year/year-month-day.tex. You can start typing.  
 
-# Create entry with a topic name (no quotes needed!)
+# If you create more than one diary in the same day, you can create entry with an extra name, such as 
 ./diary today machine-learning
+# this would create posts/year/year-month-day-[optionalname].tex. 
 
 # View system status
 ./diary status
 
-# Compile all entries from current year (super simple!)
+# Compile all entries from current year into a single pdf with table of content. 
 ./diary 2025
 
-# Compile entries with specific tags (no quotes needed!)
+# Compile entries with specific tags 
 ./diary tags AI machine-learning
 
-# Create a blog with individual HTML posts (no quotes needed!)
-./diary blog AI machine-learning
+# Create a blog with all files with including the union of a number of tags. 
+./diary blog AI machine-learning 
+
+or 
+./diary blog 2025 # creating a blog with all posts in 2025 
 ```
 
 ## 📁 Directory Structure

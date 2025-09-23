@@ -36,18 +36,18 @@ jobs:
         python diary blog 2025
         echo "✅ Blog generated successfully"
     
-    - name: Deploy to GitHub Pages
-      uses: peaceiris/actions-gh-pages@v3
+    - name: Deploy to Netlify
+      uses: nwtgck/actions-netlify@v2.0
       with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: ./blogs/2025
-        publish_branch: gh-pages
-        force_orphan: true
-        user_name: 'github-actions[bot]'
-        user_email: 'github-actions[bot]@users.noreply.github.com'
-        commit_message: 'Auto-publish blog: ${{ github.sha }}'
+        publish-dir: './blogs/2025'
+        production-branch: main
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        deploy-message: "Auto-publish blog: ${{ github.sha }}"
+      env:
+        NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+        NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
     
     - name: Success notification
       run: |
         echo "🎉 Blog published successfully!"
-        echo "📍 Your blog will be available at: https://lqiang67.github.io/diary"
+        echo "📍 Your blog is available at your Netlify URL"
