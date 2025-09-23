@@ -1,0 +1,53 @@
+name: Publish Blog to GitHub Pages
+
+on:
+  # Manual trigger - run when you want to publish
+  workflow_dispatch:
+  
+  # Auto trigger when posts are updated
+  push:
+    branches: [ main ]
+    paths: 
+      - 'posts/**'
+      - 'config.md'
+      - 'assets/**'
+
+jobs:
+  publish-blog:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y pandoc
+    
+    - name: Generate blog
+      run: |
+        echo "📝 Generating blog..."
+        python diary blog 2025
+        echo "✅ Blog generated successfully"
+    
+    - name: Deploy to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./blogs/2025
+        publish_branch: gh-pages
+        force_orphan: true
+        user_name: 'github-actions[bot]'
+        user_email: 'github-actions[bot]@users.noreply.github.com'
+        commit_message: 'Auto-publish blog: ${{ github.sha }}'
+    
+    - name: Success notification
+      run: |
+        echo "🎉 Blog published successfully!"
+        echo "📍 Your blog will be available at: https://lqiang67.github.io/diary"
