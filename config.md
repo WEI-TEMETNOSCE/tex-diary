@@ -4,11 +4,14 @@ This file contains the configuration for your research diary system. Edit the va
 
 ## Personal Information
 
-**Author Name**: Research Student
+**Author Name**: Qiang Liu
 > Your full name as it will appear on diary covers and headers
 
-**Institution**: University  
+**Institution**: Earth        
 > Your university or organization name
+
+**Diary Title**: Research Diary
+> The title of your diary system (appears in headers, titles, and generated documents)
 
 **Current Year**: auto
 > The year for which you're keeping diary entries (use 'auto' for current year)

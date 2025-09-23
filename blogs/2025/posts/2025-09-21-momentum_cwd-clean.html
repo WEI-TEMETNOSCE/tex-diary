@@ -1,34 +1,128 @@
 <!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="generator" content="pandoc" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
-  <title>2025-09-21-momentum_cwd-clean</title>
-  <style>
-    code{white-space: pre-wrap;}
-    span.smallcaps{font-variant: small-caps;}
-    div.columns{display: flex; gap: min(4vw, 1.5em);}
-    div.column{flex: auto; overflow-x: auto;}
-    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
-    /* The extra [class] is a hack that increases specificity enough to
-       override a similar rule in reveal.js */
-    ul.task-list[class]{list-style: none;}
-    ul.task-list li input[type="checkbox"] {
-      font-size: inherit;
-      width: 0.8em;
-      margin: 0 0.8em 0.2em -1.6em;
-      vertical-align: middle;
+    <meta charset="utf-8" />
+    <meta name="generator" content="pandoc" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+    <title>2025 09 21 Momentum_Cwd Clean</title>
+    <link rel="stylesheet" href="post.css" />
+    
+    <!-- MathJax Configuration -->
+    <script>
+    window.MathJax = {
+        tex: {
+            inlineMath: [['$', '$'], ['\\(', '\\)']],
+            displayMath: [['$$', '$$'], ['\\[', '\\]']],
+            processEscapes: true,
+            processEnvironments: true,
+            macros: {
+                "coloneq": "\\mathrel{\\mathop:}=",
+                "RR": "\\mathbb{R}",
+                "CC": "\\mathbb{C}",
+                "NN": "\\mathbb{N}",
+                "PP": "\\mathbb{P}",
+                "E": "\\mathbb{E}",
+                "D": "\\mathbb{D}",
+                "P": "\\mathcal{P}",
+                "H": "\\mathcal{H}",
+                "X": "\\mathcal{X}",
+                "B": "\\mathcal{B}",
+                "F": "\\mathcal{F}",
+                "M": "\\mathbb{M}",
+                "var": "\\mathrm{var}",
+                "Var": "\\mathrm{Var}",
+                "cov": "\\mathrm{cov}",
+                "Cov": "\\mathrm{Cov}",
+                "corr": "\\mathrm{corr}",
+                "Corr": "\\mathrm{Corr}",
+                "pr": "\\mathrm{Pr}",
+                "prob": "\\mathrm{Pr}",
+                "normal": "\\mathcal{N}",
+                "MSE": "\\mathrm{MSE}",
+                "KL": "\\mathrm{KL}",
+                "V": "\\mathbf",
+                "vx": "\\boldsymbol{x}",
+                "trace": "\\mathrm{trace}",
+                "diag": "\\mathrm{diag}",
+                "tt": "^\\top",
+                "df": "\\mathrm{d}",
+                "d": "\\mathrm{d}",
+                "dt": "\\mathrm{d}t",
+                "dW": "\\mathrm{d}W",
+                "dno": "\\mathrm{d}",
+                "dd": "\\nabla",
+                "tdd": "\\tilde{\\nabla}",
+                "ddt": "\\frac{\\mathrm{d}}{\\mathrm{d} t}",
+                "div": "\\nabla\\cdot",
+                "ind": "\\mathbb{I}",
+                "sign": "\\mathrm{sign}",
+                "cd": "\\mid",
+                "la": "\\langle",
+                "ra": "\\rangle",
+                "sumstein": "\\mathcal{T}",
+                "stein": "\\mathcal{A}",
+                "score": "\\boldsymbol{\g<1>}",
+                "ff": "\\boldsymbol{\g<1>}",
+                "eng": "E",
+                "hattheta": "\\hat{\\theta}",
+                "cc": "\\theta",
+                "kernel": "\\mathbf{k}",
+                "datai": "^{(i)}",
+                "defeq": "\\mathrel{\\aban@defeq}",
+                "workingDate": "\\textsc{<YEAR> $|$ <MONTH_NAME> $|$ <DAY>}",
+                "userName": "<AUTHOR>",
+                "institution": "<INSTITUTION>",
+                "nablat": "\\frac{\\mathrm{d}}{\\mathrm{d} t}",
+                "diaryTitle": "<DIARY_TITLE>",
+                "myb": ["\\mbox{\\boldmath$#1$}", 1],
+                "eqnref": ["Eqn.~\\eqref{#1}", 1],
+                "figref": ["Fig.~\\ref{#1}", 1],
+                "here": ["\\url{#1}", 1],
+                "Qiang": ["\\textcolor{red}{#1}\\\\", 1],
+                "qiang": ["\\textcolor{red}{#1}", 1],
+                "Todo": ["\\textcolor{red}{TODO: #1}\\\\", 1],
+                "todo": ["\\textcolor{gray}{TODO: #1}", 1],
+                "remark": ["\\paragraph{Remark}#1", 1],
+                "red": ["\\textcolor{red}{#1}", 1],
+                "med": ["\\textcolor{magenta}{#1}", 1],
+                "blue": ["\\textcolor{blue}{#1}", 1],
+                "gray": ["\\textcolor{gray}{#1}", 1],
+                "green": ["\\textcolor{green}{#1}", 1],
+                "myempty": ["", 1],
+                "vv": ["\\boldsymbol{#1}", 1],
+                "neib": ["\\partial{#1}", 1],
+                "set": ["\\mathcal{#1}", 1],
+                "funcset": ["\\mathcal{#1}", 1],
+                "opt": ["\\mathcal{#1}", 1],
+                "greedy": ["\\mathrm{Greedy}\\{#1\\}", 1],
+                "clickhere": ["\\href{run:#1}{Click here}", 1],
+                "e": ["\\mathbb{E}\\left[#1\\right]", 1],
+                "myf": ["\\frac{\\displaystyle #1}{\\displaystyle #2}", 2],
+                "myp": ["\\frac{\\displaystyle \\partial #1}{\\displaystyle \\partial  #2}", 2],
+                "f": ["\\frac{#1}{#2}", 2],
+                "definecolorbox": ["\\expandafter\\declaretheoremstyle\\expandafter[headfont=\\bfseries\\sffamily\\color{#1!70!black}, 
+    bodyfont=\\normalfont,
+    mdframed={linewidth=2pt,
+      rightline=false, 
+      topline=false, 
+      bottomline=false,
+      linecolor=#1, 
+      backgroundcolor=#1!5,
     }
-  </style>
-  <link rel="stylesheet" href="post.css" />
-  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
-  <script
-  src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js"
-  type="text/javascript"></script>
+  ]{#2}", 2]
+            }
+        },
+        options: {
+            ignoreHtmlClass: "tex2jax_ignore",
+            processHtmlClass: "tex2jax_process"
+        }
+    };
+    </script>
+    <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
 </head>
 <body>
-<p><a href="run:2025-09-21-momentum_cwd.tex">September 21</a></p>
+    <p><a href="run:2025-09-21-momentum_cwd.tex">September 21</a></p>
 <h1 id="momentum-cautious-wd">Momentum + Cautious WD</h1>
 <p><span class="math display">\[\begin{aligned}
 \dot x + \mathbb{R}^d + \nabla f + \mathbb{E}[x].
@@ -128,5 +222,6 @@ have</p>
 <div class="proof">
 <p><em>Proof.</em> This is the best. ◻</p>
 </div>
+
 </body>
 </html>

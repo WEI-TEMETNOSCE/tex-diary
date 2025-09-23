@@ -14,12 +14,12 @@ def get_base_dir():
 def load_config():
     base_dir = get_base_dir()
     config_file = base_dir / "config.md"
-    defaults = {'author': 'Research Student', 'institution': 'University', 'year': datetime.now().year, 'output_dir': 'collections', 'template_dir': 'assets/templates', 'default_editor': 'open'}
+    defaults = {'author': 'Research Student', 'institution': 'University', 'diary_title': 'Research Diary', 'year': datetime.now().year, 'output_dir': 'collections', 'template_dir': 'assets/templates', 'default_editor': 'open'}
     if not config_file.exists(): return defaults
     config = defaults.copy()
     try:
         with open(config_file, 'r') as f: content = f.read()
-        patterns = {'author': r'\*\*Author Name\*\*:\s*(.+)', 'institution': r'\*\*Institution\*\*:\s*(.+)', 'year': r'\*\*Current Year\*\*:\s*(.+)'}
+        patterns = {'author': r'\*\*Author Name\*\*:\s*(.+)', 'institution': r'\*\*Institution\*\*:\s*(.+)', 'diary_title': r'\*\*Diary Title\*\*:\s*(.+)', 'year': r'\*\*Current Year\*\*:\s*(.+)'}
         for key, pattern in patterns.items():
             match = re.search(pattern, content)
             if match:
@@ -75,7 +75,7 @@ def create_today_entry(optional_name=None):
             if optional_name:
                 clean_name = re.sub(r'[^a-zA-Z0-9_-]', '', optional_name.strip())
                 #if clean_name: default_tags.append(clean_name.lower())
-            replacements = {'<YEAR>': str(today.year), '<MONTH>': f"{today.month:02d}", '<DAY>': f"{today.day:02d}", '<DAY_NUMBER>': str(today.day), '<MONTH_NAME>': month_names[today.month - 1], '<AUTHOR>': config['author'], '<INSTITUTION>': config['institution'], '<FILENAME>': entry_file.name, '<TAGS>': ", ".join(default_tags)}
+            replacements = {'<YEAR>': str(today.year), '<MONTH>': f"{today.month:02d}", '<DAY>': f"{today.day:02d}", '<DAY_NUMBER>': str(today.day), '<MONTH_NAME>': month_names[today.month - 1], '<AUTHOR>': config['author'], '<INSTITUTION>': config['institution'], '<DIARY_TITLE>': config.get('diary_title', 'Research Diary'), '<FILENAME>': entry_file.name, '<TAGS>': ", ".join(default_tags)}
             content = template_content
             for placeholder, value in replacements.items(): content = content.replace(placeholder, value)
             with open(entry_file, 'w') as f: f.write(content)
@@ -428,10 +428,10 @@ def cmd_compile(args):
             content = template_content
             # Add bibliography section to the diary entries content
             full_content = collection_content + bibliography_section
-            for placeholder, value in {'<YEAR>': str(year), '<AUTHOR>': config['author'], '<INSTITUTION>': config['institution'], '<DIARYENTRIES>': full_content}.items(): content = content.replace(placeholder, value)
+            for placeholder, value in {'<YEAR>': str(year), '<AUTHOR>': config['author'], '<INSTITUTION>': config['institution'], '<DIARY_TITLE>': config.get('diary_title', 'Research Diary'), '<DIARYENTRIES>': full_content}.items(): content = content.replace(placeholder, value)
             with open(collection_tex, 'w') as f: f.write(content)
         else:
-            with open(collection_tex, 'w') as f: f.write(f"""\\documentclass[11pt,letterpaper]{{article}}\n\\title{{Research Diary Collection - {year}}}\n\\author{{{config['author']}}}\n\\begin{{document}}\n\\maketitle\n\\tableofcontents\n\\clearpage\n{collection_content}\n\\end{{document}}""")
+            with open(collection_tex, 'w') as f: f.write(f"""\\documentclass[11pt,letterpaper]{{article}}\n\\title{{{config.get('diary_title', 'Research Diary')} Collection - {year}}}\n\\author{{{config['author']}}}\n\\begin{{document}}\n\\maketitle\n\\tableofcontents\n\\clearpage\n{collection_content}\n\\end{{document}}""")
         print(f"INFO: Compiling {collection_tex} to {output_format.upper()}")
         if output_format == 'html':
             result_file = compile_to_html(collection_tex)
@@ -484,10 +484,10 @@ def cmd_tags(args):
             content = template_content
             # Add bibliography section to the diary entries content
             full_content = collection_content + bibliography_section
-            for placeholder, value in {'<YEAR>': str(config['year']), '<AUTHOR>': config['author'], '<INSTITUTION>': config['institution'], '<DIARYENTRIES>': full_content}.items(): content = content.replace(placeholder, value)
+            for placeholder, value in {'<YEAR>': str(config['year']), '<AUTHOR>': config['author'], '<INSTITUTION>': config['institution'], '<DIARY_TITLE>': config.get('diary_title', 'Research Diary'), '<DIARYENTRIES>': full_content}.items(): content = content.replace(placeholder, value)
             with open(collection_tex, 'w') as f: f.write(content)
         else:
-            with open(collection_tex, 'w') as f: f.write(f"""\\documentclass[11pt,letterpaper]{{article}}\n\\title{{Research Diary Collection - {' + '.join(args.tags)}}}\n\\author{{{config['author']}}}\n\\begin{{document}}\n\\maketitle\n\\tableofcontents\n\\clearpage\n{collection_content}\n\\end{{document}}""")
+            with open(collection_tex, 'w') as f: f.write(f"""\\documentclass[11pt,letterpaper]{{article}}\n\\title{{{config.get('diary_title', 'Research Diary')} Collection - {' + '.join(args.tags)}}}\n\\author{{{config['author']}}}\n\\begin{{document}}\n\\maketitle\n\\tableofcontents\n\\clearpage\n{collection_content}\n\\end{{document}}""")
         print(f"INFO: Compiling {collection_tex} to {output_format.upper()}")
         if output_format == 'html':
             result_file = compile_to_html(collection_tex)
@@ -579,7 +579,7 @@ def compile_single_entry_to_html(tex_file, output_dir):
                '--mathjax']  # Remove --standalone to get body content only
         
         # Check for bibliography
-        bib_file = output_dir / "assets/bibliography/reference.bib"
+        bib_file = output_dir / "assets/bib/reference.bib"
         has_citations = False
         try:
             with open(temp_tex, 'r') as f:
@@ -590,7 +590,11 @@ def compile_single_entry_to_html(tex_file, output_dir):
         
         # Only add citeproc if we have citations and bibliography
         if has_citations and bib_file.exists():
-            cmd.extend(['--citeproc', '--bibliography', 'assets/bibliography/reference.bib'])
+            cmd.extend(['--citeproc', '--bibliography', 'assets/bib/reference.bib'])
+            # Also check for reference2.bib
+            bib_file2 = output_dir / "assets/bib/reference2.bib"
+            if bib_file2.exists():
+                cmd.extend(['--bibliography', 'assets/bib/reference2.bib'])
         
         # Run pandoc to get body content
         result = subprocess.run(cmd, capture_output=True, text=True)
@@ -793,9 +797,9 @@ def render_template(template_content, context):
         if key.startswith('^'):
             condition_key = key[1:]  # Remove the ^ prefix
             pattern = f"{{{{\\^{condition_key}}}}}(.*?){{{{/{condition_key}}}}}"
-            if not value:  # If condition is falsy, keep the content
+            if value:  # If condition is truthy, keep the content
                 result = re.sub(pattern, r'\1', result, flags=re.DOTALL)
-            else:  # If condition is truthy, remove the content
+            else:  # If condition is falsy, remove the content
                 result = re.sub(pattern, '', result, flags=re.DOTALL)
     
     # Replace simple variables {{VARIABLE}} (do this last)
@@ -1078,13 +1082,13 @@ def create_blog_index(blog_dir, posts_info, tags, config, compact=False):
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{config.get('author', 'Research Student')}'s Research Diary</title>
+    <title>{config.get('author', 'Research Student')}'s {config.get('diary_title', 'Research Diary')}</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>{config.get('author', 'Research Student')}'s Research Diary</h1>
+            <h1>{config.get('author', 'Research Student')}'s {config.get('diary_title', 'Research Diary')}</h1>
             <div class="blog-meta">
                 <p>{config.get('institution', 'University')} • {len(posts_info)} entries</p>
             </div>
@@ -1295,8 +1299,9 @@ def create_blog_index(blog_dir, posts_info, tags, config, compact=False):
     
     # Prepare template context
     context = {
-        'PAGE_TITLE': f"Research Blog - {tags[0].title() if tags else 'All Posts'}",
-        'BLOG_TITLE': f"{config.get('author', 'Research Student')}'s Research Diary",
+        'PAGE_TITLE': f"{config.get('diary_title', 'Research Diary')} - {tags[0].title() if tags else 'All Posts'}",
+        'BLOG_TITLE': f"{config.get('author', 'Research Student')}'s {config.get('diary_title', 'Research Diary')}",
+        'DIARY_TITLE': config.get('diary_title', 'Research Diary'),
         'AUTHOR': config.get('author', 'Research Student'),
         'INSTITUTION': config.get('institution', 'University'),
         'POST_COUNT': len(posts_info),
@@ -1311,7 +1316,7 @@ def create_blog_index(blog_dir, posts_info, tags, config, compact=False):
     
     # Prepare posts data
     for post in posts_info:
-        short_date = post['date'].strftime('%m/%d') if hasattr(post['date'], 'strftime') else post.get('formatted_date', '').split(',')[0]
+        short_date = post['date'].strftime('%m/%d/%y') if hasattr(post['date'], 'strftime') else post.get('formatted_date', '').split(',')[0]
         post_data = {
             'TITLE': post['title'],
             'HTML_FILE': post['html_file'],
@@ -1321,7 +1326,6 @@ def create_blog_index(blog_dir, posts_info, tags, config, compact=False):
             'TAGS': post['tags']
         }
         context['POSTS'].append(post_data)
-    
     
     # Render the template
     html_content = render_template(template_content, context)
@@ -1341,13 +1345,13 @@ def create_blog_index_legacy(blog_dir, posts_info, tags, config, compact=False):
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Research Blog - {tags[0].title() if tags else 'All Posts'}</title>
+    <title>{config.get('diary_title', 'Research Diary')} - {tags[0].title() if tags else 'All Posts'}</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
     <div class="header">
-            <h1>{config.get('author', 'Research Student')}'s Research Diary</h1>
+            <h1>{config.get('author', 'Research Student')}'s {config.get('diary_title', 'Research Diary')}</h1>
             <div class="blog-meta">
                 <p>{config.get('author', 'Research Student')} • {config.get('institution', 'University')} • {len(posts_info)} entries</p>
                 {f'<p class="subtitle">Topic: {", ".join(tag.title() for tag in tags)}</p>' if tags else ''}
@@ -1358,7 +1362,7 @@ def create_blog_index_legacy(blog_dir, posts_info, tags, config, compact=False):
         html_content += """
         <ul class="posts-list">"""
         for post in posts_info:
-            short_date = post['date'].strftime('%m/%d') if hasattr(post['date'], 'strftime') else post.get('formatted_date', '').split(',')[0]
+            short_date = post['date'].strftime('%m/%d/%y') if hasattr(post['date'], 'strftime') else post.get('formatted_date', '').split(',')[0]
             html_content += f"""
             <li class="post-item">
                 <div class="post-date">{short_date}</div>
@@ -1389,7 +1393,7 @@ def create_blog_index_legacy(blog_dir, posts_info, tags, config, compact=False):
     html_content += f"""
     </div>
     <div class="footer">
-        <p>Generated by Research Diary System on {datetime.now().strftime('%Y-%m-%d %H:%M')}</p>
+        <p>Generated by {config.get('diary_title', 'Research Diary')} System on {datetime.now().strftime('%Y-%m-%d %H:%M')}</p>
     </div>
 </body>
 </html>"""
@@ -1800,6 +1804,26 @@ def add_simple_mathjax_commands(html_file):
     except Exception as e:
         print(f"    ⚠️  Could not process MathJax commands: {e}")
 
+def copy_bibliography_files(posts_dir, base_dir):
+    """Copy bibliography files to the blog posts directory"""
+    import shutil
+    
+    bib_source = base_dir / "assets" / "bib"
+    if bib_source.exists():
+        bib_dest = posts_dir / "assets" / "bib"
+        bib_dest.mkdir(parents=True, exist_ok=True)
+        
+        copied_count = 0
+        for bib_file in bib_source.glob("*.bib"):
+            shutil.copy2(bib_file, bib_dest / bib_file.name)
+            copied_count += 1
+            print(f"    📚 Copied bibliography: {bib_file.name}")
+        
+        if copied_count > 0:
+            print(f"    ✅ Bibliography setup complete: {copied_count} files copied")
+    else:
+        print(f"    ⚠️  No bibliography directory found at {bib_source}")
+
 def copy_required_assets_to_blog(blog_dir, posts_dir, base_dir):
     """Analyze HTML files and copy only the assets they actually reference"""
     import re
@@ -1945,6 +1969,9 @@ def cmd_blog(args):
         # Copy only the assets that are actually referenced in HTML files
         # Note: HTML files expect assets relative to their location (posts/assets/...)
         copy_required_assets_to_blog(posts_dir, posts_dir, base_dir)
+        
+        # Copy bibliography files for citations
+        copy_bibliography_files(posts_dir, base_dir)
         
         # Create index.html
         print("INFO: Creating blog index...")

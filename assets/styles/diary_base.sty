@@ -1,5 +1,5 @@
 \ProvidesPackage{diary_base}
-%%%%%%%%% RESEARCH DIARY - BASE FUNCTIONALITY %%%%%%%%%%%%
+%%%%%%%%% CONFIGURABLE DIARY SYSTEM - BASE FUNCTIONALITY %%%%%%%%%%%%
 %% Complete package setup and document configuration
 %% Combines essential packages, math packages, and document styling
 %% This file provides everything needed for diary entries
@@ -57,9 +57,9 @@
 \definecolor{lightgray}{gray}{0.95}
 \usepackage{hyperref}
 \hypersetup{
-    pdftitle={Research Diary},
+    pdftitle={\diaryTitle},
     pdfauthor={\userName \; (\institution)},
-    pdfsubject={Research Diary},
+    pdfsubject={\diaryTitle},
     colorlinks=true,
     linkcolor=darkblue,
     citecolor=green,
@@ -75,7 +75,7 @@
 
 %% DEFAULT HEADER/FOOTER (can be overridden)
 \rhead{\workingDate}
-\chead{\textsc{Research Diary}}
+\chead{\textsc{\diaryTitle}}
 \lhead{\textsc{\userName}}
 \rfoot{\textsc{\thepage}}
 \cfoot{\textit{Last modified: \today}}

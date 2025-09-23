@@ -1,8 +1,9 @@
-% Research Diary Collection Template for <AUTHOR> (<INSTITUTION>), <YEAR>
+% <DIARY_TITLE> Collection Template for <AUTHOR> (<INSTITUTION>), <YEAR>
 \documentclass[letterpaper,11pt]{article}
 \newcommand{\userName}{<AUTHOR>}
 \newcommand{\institution}{<INSTITUTION>}
-\newcommand{\workingDate}{<YEAR> Research Diary}
+\newcommand{\diaryTitle}{<DIARY_TITLE>}
+\newcommand{\workingDate}{<YEAR> \diaryTitle}
 % Modular package loading - choose what you need
 % Files are symlinked in output directory for self-contained compilation
 
@@ -12,9 +13,9 @@
 
 \usepackage{tocloft}
 \setlength{\cftbeforesecskip}{5pt}
-\renewcommand*\contentsname{<AUTHOR>'s Research Diary -- Contents}
+\renewcommand*\contentsname{<AUTHOR>'s <DIARY_TITLE> -- Contents}
 
-\title{Research Diary Collection - <YEAR>}
+\title{<DIARY_TITLE> Collection - <YEAR>}
 \author{<AUTHOR>}
 \date{Compiled \today}
 
