@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="generator" content="pandoc" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
-    <title>2025 09 22 Test</title>
+    <title>2025 09 22 Command Test</title>
     <link rel="stylesheet" href="post.css" />
     
     <!-- MathJax Configuration -->
@@ -121,28 +121,62 @@
     <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
 </head>
 <body>
-    <p><a href="run:2025-09-22-test.tex">September 22</a></p>
-<h1 id="testing-custom-commands">Testing Custom Commands</h1>
-<p>Testing <code>\dd</code> and <code>\ind</code> commands: <span
-class="math display">\[\dot m = \dd f(x) - m\]</span> <span
-class="math display">\[\ind(mx \geq 0) = \mathbb{I}(mx \geq
-0)\]</span></p>
-<p>Testing <code>\argmax</code> and <code>\argmin</code>: <span
-class="math display">\[x^* = \argmax_{x \in \RR} f(x)\]</span> <span
-class="math display">\[y^* = \argmin_{y \in \CC} g(y)\]</span></p>
-<p>Testing <code>\begin{align*}...\end{align*}</code> delimited
-commands: <span class="math display">\[\begin{aligned}
-x + y = z \\
-a + b = c
+    <p><a href="run:2025-09-22-command-test.tex">September 22</a></p>
+<h1 id="comprehensive-latex-command-test">Comprehensive LaTeX Command
+Test</h1>
+<p>This document tests all custom commands defined in
+<code>diary_commands.sty</code> to verify the automatic command parsing
+system.</p>
+<h2 id="mathematical-sets-and-spaces">Mathematical Sets and Spaces</h2>
+<p><span class="math display">\[\RR^d, \CC^n, \NN, \PP, \E[X],
+\D\]</span> <span class="math display">\[\P(\mathcal{A}), \H, \X, \B,
+\F, \M\]</span></p>
+<h2 id="statistical-functions">Statistical Functions</h2>
+<p><span class="math display">\[\var(X), \Var(X), \cov(X,Y),
+\Cov(X,Y)\]</span> <span class="math display">\[\corr(X,Y), \Corr(X,Y),
+\pr(A), \prob(B)\]</span> <span class="math display">\[X \sim
+\normal(\mu, \sigma^2), \MSE, \KL(P \parallel Q)\]</span></p>
+<h2 id="math-operators">Math Operators</h2>
+<p><span class="math display">\[x^* = \argmax_{x \in \RR} f(x)\]</span>
+<span class="math display">\[y^* = \argmin_{y \in \CC} g(y)\]</span>
+<span class="math display">\[\hat{\mu} = \median\{x_1, \ldots,
+x_n\}\]</span> <span class="math display">\[\hat{x} = \mode\{x_1,
+\ldots, x_n\}\]</span></p>
+<h2 id="vectors-and-bold-symbols">Vectors and Bold Symbols</h2>
+<p><span class="math display">\[\vv{x}, \vv{y}, \vv{\theta},
+\vv{\beta}\]</span> <span class="math display">\[\V{A}, \V{B}, \vx,
+\myb{z}\]</span></p>
+<h2 id="fractions-and-derivatives">Fractions and Derivatives</h2>
+<p><span class="math display">\[\myf{a + b}{c + d} = \frac{\displaystyle
+a + b}{\displaystyle c + d}\]</span> <span
+class="math display">\[\myp{f}{x} = \frac{\displaystyle \partial
+f}{\displaystyle \partial x}\]</span></p>
+<h2 id="special-symbols">Special Symbols</h2>
+<p><span class="math display">\[a \coloneq b + c\]</span></p>
+<h2 id="calculus-and-analysis">Calculus and Analysis</h2>
+<p><span class="math display">\[\dd f(x), \ind(A), \trace(A),
+\diag(A)\]</span></p>
+<h2 id="color-commands-for-text">Color Commands (for text)</h2>
+<p>Some , , , , .</p>
+<h2 id="complex-mathematical-expression">Complex Mathematical
+Expression</h2>
+<p>Combining multiple commands: <span
+class="math display">\[\E\left[\myf{\vv{x}^T \V{A}
+\vv{x}}{\trace(\V{B})}\right] = \argmax_{\vv{\theta} \in \RR^d}
+\prob\left(\vv{X} \sim \normal(\vv{\mu}, \V{\Sigma})\right)\]</span></p>
+<p>Where we use the derivative: <span
+class="math display">\[\myp{L(\vv{\theta})}{\vv{\theta}} = \dd
+L(\vv{\theta})\]</span></p>
+<p>And the indicator function: <span
+class="math display">\[\ind\left(\vv{x} \in \mathcal{X}\right) \cdot
+\var(Y)\]</span></p>
+<h2 id="delimited-commands-test">Delimited Commands Test</h2>
+<p>Testing the <code>\begin{align*}...\end{align*}</code> commands:
+<span class="math display">\[\begin{aligned}
+\vv{x} = \argmax_{\vv{w}} \E\left[\myf{\vv{w}^T
+\vv{x}}{\trace(\V{K})}\right] \\
+\text{subject to } \vv{w} \in \RR^d
 \end{aligned}\]</span></p>
-<p>Testing <code>\begin{align*}a...\end{align*}a</code>: <span
-class="math display">\[\begin{aligned}
-a
-\label{eq:test}
-\sum_{i=1}^n x_i = 0
-\end{aligned}\]</span>a</p>
-<p>Testing <code>\vv{x}</code> and <code>\V{y}</code>: <span
-class="math display">\[\vv{x} = \V{y} + \vx\]</span></p>
 
 </body>
 </html>

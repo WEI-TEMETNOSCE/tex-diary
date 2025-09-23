@@ -560,24 +560,25 @@ def preprocess_latex_for_pandoc_simple(tex_file, output_dir):
         return temp_file
 
 def compile_single_entry_to_html(tex_file, output_dir):
-    """Compile a single diary entry to HTML"""
+    """Compile a single diary entry to HTML using template system"""
     if not shutil.which('pandoc'): raise RuntimeError("pandoc not found")
     
     # Set up paths
     html_file = output_dir / f"{tex_file.stem}.html"
+    temp_html_file = output_dir / f"{tex_file.stem}_temp.html"
     original_dir = os.getcwd()
     
     try:
         os.chdir(output_dir)
         
-        # Preprocess the tex file to handle \def commands, then copy to output directory
+        # Preprocess the tex file to handle \def commands
         temp_tex = preprocess_latex_for_pandoc_simple(tex_file, output_dir)
         
-        # Build pandoc command for individual entry (simplified for individual posts)
-        cmd = ['pandoc', tex_file.name, '-o', html_file.name,
-               '--standalone', '--mathjax']
+        # Build pandoc command to generate body content only
+        cmd = ['pandoc', tex_file.name, '-o', temp_html_file.name,
+               '--mathjax']  # Remove --standalone to get body content only
         
-        # Check for bibliography - be more permissive for individual posts
+        # Check for bibliography
         bib_file = output_dir / "assets/bibliography/reference.bib"
         has_citations = False
         try:
@@ -591,51 +592,122 @@ def compile_single_entry_to_html(tex_file, output_dir):
         if has_citations and bib_file.exists():
             cmd.extend(['--citeproc', '--bibliography', 'assets/bibliography/reference.bib'])
         
-        # Add CSS
-        css_content = create_blog_post_css()
-        css_file = output_dir / "post.css"
-        with open(css_file, 'w') as f:
-            f.write(css_content)
-        cmd.extend(['--css', 'post.css'])
-        
-        # Run pandoc
+        # Run pandoc to get body content
         result = subprocess.run(cmd, capture_output=True, text=True)
         
-        # Clean up temporary files
+        # Clean up temporary tex file
         temp_tex.unlink()
-        css_file.unlink()
         
         if result.returncode != 0:
             print(f"Warning: Failed to convert {tex_file.name}: {result.stderr}")
             # Try without citeproc if it failed
             if '--citeproc' in cmd:
                 print(f"  Retrying without bibliography...")
-                cmd = ['pandoc', tex_file.name, '-o', html_file.name,
-                       '--standalone', '--mathjax', '--css', 'post.css']
+                cmd = ['pandoc', tex_file.name, '-o', temp_html_file.name, '--mathjax']
                 
-                # Recreate CSS file
-                with open(css_file, 'w') as f:
-                    f.write(css_content)
-                
-                # Copy tex file again
+                # Copy tex file again and retry
                 shutil.copy(tex_file, temp_tex)
-                
                 result = subprocess.run(cmd, capture_output=True, text=True)
-                
-                # Clean up again
                 temp_tex.unlink()
-                css_file.unlink()
                 
                 if result.returncode != 0:
                     print(f"  Still failed: {result.stderr}")
                     return None
             else:
                 return None
+        
+        # Now wrap the content with our template
+        if temp_html_file.exists():
+            with open(temp_html_file, 'r', encoding='utf-8') as f:
+                body_content = f.read()
+            
+            # Clean up temp file
+            temp_html_file.unlink()
+            
+            # Use template system to create final HTML
+            final_html = create_entry_html_with_template(tex_file, body_content, html_file)
+            return final_html
+        else:
+            return None
             
     finally:
         os.chdir(original_dir)
     
     return html_file if html_file.exists() else None
+
+def create_entry_html_with_template(tex_file, body_content, output_file):
+    """Create final HTML using entry template system"""
+    # Load the HTML template
+    template_content = load_html_template('entry_template')
+    if not template_content:
+        print("    ⚠️  Entry template not found, using pandoc default")
+        # Fallback: write body content directly
+        with open(output_file, 'w', encoding='utf-8') as f:
+            f.write(body_content)
+        return output_file
+    
+    # Extract title from tex file
+    title = tex_file.stem.replace('-', ' ').title()
+    try:
+        with open(tex_file, 'r', encoding='utf-8') as f:
+            tex_content = f.read()
+            # Try to find title in LaTeX content
+            import re
+            title_match = re.search(r'\\title\{([^}]+)\}', tex_content)
+            if title_match:
+                title = title_match.group(1)
+    except:
+        pass
+    
+    # Generate MathJax macros from our LaTeX commands
+    mathjax_macros = generate_mathjax_macros()
+    
+    # Prepare template context
+    context = {
+        'TITLE': title,
+        'CONTENT': body_content,
+        'MATHJAX_MACROS': mathjax_macros
+    }
+    
+    # Render the template
+    html_content = render_template(template_content, context)
+    
+    # Write the final HTML
+    with open(output_file, 'w', encoding='utf-8') as f:
+        f.write(html_content)
+    
+    return output_file
+
+def generate_mathjax_macros():
+    """Generate MathJax macro definitions from LaTeX commands"""
+    try:
+        base_dir = get_base_dir()
+        latex_commands = parse_latex_commands_from_files(base_dir)
+        
+        macros = []
+        
+        # Convert simple commands
+        for cmd_name, definition in latex_commands['simple'].items():
+            # Clean definition for JavaScript
+            clean_def = definition.replace('\\', '\\\\').replace('"', '\\"')
+            macros.append(f'"{cmd_name}": "{clean_def}"')
+        
+        # Convert one-arg commands
+        for cmd_name, definition in latex_commands['one_arg'].items():
+            # Convert #1 to #1 for MathJax
+            mathjax_def = definition.replace('\\g<1>', '#1').replace('\\', '\\\\').replace('"', '\\"')
+            macros.append(f'"{cmd_name}": ["{mathjax_def}", 1]')
+        
+        # Convert two-arg commands
+        for cmd_name, definition in latex_commands['two_arg'].items():
+            mathjax_def = definition.replace('\\g<1>', '#1').replace('\\g<2>', '#2').replace('\\', '\\\\').replace('"', '\\"')
+            macros.append(f'"{cmd_name}": ["{mathjax_def}", 2]')
+        
+        return ',\n                '.join(macros)
+        
+    except Exception as e:
+        print(f"    ⚠️  Could not generate MathJax macros: {e}")
+        return '"dd": "\\\\nabla", "ind": "\\\\mathbb{I}", "RR": "\\\\mathbb{R}", "CC": "\\\\mathbb{C}"'
 
 def load_css_template(template_name):
     """Load CSS template from assets/html_templates directory"""
@@ -651,6 +723,88 @@ def load_css_template(template_name):
     except Exception as e:
         print(f"    ⚠️  Error loading CSS template: {e}")
         return create_fallback_css(template_name)
+
+def load_html_template(template_name):
+    """Load HTML template from assets/html_templates directory"""
+    base_dir = get_base_dir()
+    template_path = base_dir / "assets" / "html_templates" / f"{template_name}.html"
+    
+    try:
+        with open(template_path, 'r', encoding='utf-8') as f:
+            return f.read()
+    except FileNotFoundError:
+        print(f"    ⚠️  HTML template '{template_name}' not found")
+        return None
+    except Exception as e:
+        print(f"    ⚠️  Error loading HTML template: {e}")
+        return None
+
+def render_template(template_content, context):
+    """Simple template renderer supporting {{variable}} and {{#section}}{{/section}} syntax"""
+    if not template_content:
+        return ""
+    
+    result = template_content
+    
+    import re
+    
+    # Handle loops FIRST (before conditionals remove the markers)
+    # Handle loops {{#POSTS}}...{{/POSTS}}
+    posts_pattern = r'\{\{#POSTS\}\}(.*?)\{\{/POSTS\}\}'
+    posts_template = re.search(posts_pattern, result, re.DOTALL)
+    if posts_template and 'POSTS' in context:
+        posts_content = ""
+        post_template = posts_template.group(1)
+        for post in context.get('POSTS', []):
+            post_html = post_template
+            # Replace post-specific variables
+            for post_key, post_value in post.items():
+                post_placeholder = f"{{{{{post_key}}}}}"
+                post_html = post_html.replace(post_placeholder, str(post_value) if post_value is not None else "")
+            
+            # Handle post tags
+            if '{{#TAGS}}' in post_html and 'TAGS' in post:
+                tags_pattern = r'\{\{#TAGS\}\}(.*?)\{\{/TAGS\}\}'
+                tags_template = re.search(tags_pattern, post_html, re.DOTALL)
+                if tags_template:
+                    tags_content = ""
+                    tag_template = tags_template.group(1)
+                    for tag in post.get('TAGS', []):
+                        tag_html = tag_template.replace('{{.}}', str(tag))
+                        tags_content += tag_html
+                    post_html = re.sub(tags_pattern, tags_content, post_html, flags=re.DOTALL)
+            
+            posts_content += post_html
+        
+        result = re.sub(posts_pattern, posts_content, result, flags=re.DOTALL)
+    
+    # Handle positive conditionals {{#CONDITION}}
+    for key, value in context.items():
+        if key.startswith('#') and key != '#POSTS':  # Skip POSTS as it's already handled
+            condition_key = key[1:]  # Remove the # prefix
+            pattern = f"{{{{#{condition_key}}}}}(.*?){{{{/{condition_key}}}}}"
+            if value:  # If condition is truthy, keep the content
+                result = re.sub(pattern, r'\1', result, flags=re.DOTALL)
+            else:  # If condition is falsy, remove the content
+                result = re.sub(pattern, '', result, flags=re.DOTALL)
+    
+    # Handle negative conditionals {{^CONDITION}}
+    for key, value in context.items():
+        if key.startswith('^'):
+            condition_key = key[1:]  # Remove the ^ prefix
+            pattern = f"{{{{\\^{condition_key}}}}}(.*?){{{{/{condition_key}}}}}"
+            if not value:  # If condition is falsy, keep the content
+                result = re.sub(pattern, r'\1', result, flags=re.DOTALL)
+            else:  # If condition is truthy, remove the content
+                result = re.sub(pattern, '', result, flags=re.DOTALL)
+    
+    # Replace simple variables {{VARIABLE}} (do this last)
+    for key, value in context.items():
+        if not key.startswith('#') and not key.startswith('^'):
+            placeholder = f"{{{{{key}}}}}"
+            result = result.replace(placeholder, str(value) if value is not None else "")
+    
+    return result
 
 def create_fallback_css(template_name):
     """Create basic fallback CSS if template file is missing"""
@@ -1127,11 +1281,60 @@ def extract_title_and_excerpt(tex_file):
         return tex_file.stem.replace('-', ' ').title(), "Research diary entry..."
 
 def create_blog_index(blog_dir, posts_info, tags, config, compact=False):
-    """Create the blog index.html file"""
+    """Create the blog index.html file using template system"""
     index_html = blog_dir / "index.html"
     
     # Sort posts by date (newest first)
     posts_info.sort(key=lambda x: x['date'], reverse=True)
+    
+    # Load the HTML template
+    template_content = load_html_template('index_template')
+    if not template_content:
+        print("    ⚠️  Falling back to hardcoded HTML generation")
+        return create_blog_index_legacy(blog_dir, posts_info, tags, config, compact)
+    
+    # Prepare template context
+    context = {
+        'PAGE_TITLE': f"Research Blog - {tags[0].title() if tags else 'All Posts'}",
+        'BLOG_TITLE': f"{config.get('author', 'Research Student')}'s Research Diary",
+        'AUTHOR': config.get('author', 'Research Student'),
+        'INSTITUTION': config.get('institution', 'University'),
+        'POST_COUNT': len(posts_info),
+        'TOPICS': ', '.join(tag.title() for tag in tags) if tags else '',
+        '#TOPICS': bool(tags),
+        '#COMPACT_MODE': compact,
+        '^COMPACT_MODE': not compact,
+        'GENERATION_DATE': datetime.now().strftime('%Y-%m-%d %H:%M'),
+        '#POSTS': True,
+        'POSTS': []
+    }
+    
+    # Prepare posts data
+    for post in posts_info:
+        short_date = post['date'].strftime('%m/%d') if hasattr(post['date'], 'strftime') else post.get('formatted_date', '').split(',')[0]
+        post_data = {
+            'TITLE': post['title'],
+            'HTML_FILE': post['html_file'],
+            'SHORT_DATE': short_date,
+            'FORMATTED_DATE': post['formatted_date'],
+            'EXCERPT': post['excerpt'],
+            'TAGS': post['tags']
+        }
+        context['POSTS'].append(post_data)
+    
+    
+    # Render the template
+    html_content = render_template(template_content, context)
+    
+    # Write the generated HTML
+    with open(index_html, 'w', encoding='utf-8') as f:
+        f.write(html_content)
+    
+    return index_html
+
+def create_blog_index_legacy(blog_dir, posts_info, tags, config, compact=False):
+    """Legacy hardcoded HTML generation as fallback"""
+    index_html = blog_dir / "index.html"
     
     html_content = f"""<!DOCTYPE html>
 <html lang="en">
@@ -1142,25 +1345,19 @@ def create_blog_index(blog_dir, posts_info, tags, config, compact=False):
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <div class="container">
     <div class="header">
-        <h1>Research Blog</h1>
-        <p class="subtitle">{config['author']} - {config['institution']}</p>
-        <p class="subtitle">Topic: {', '.join(tag.title() for tag in tags)}</p>
+            <h1>{config.get('author', 'Research Student')}'s Research Diary</h1>
+            <div class="blog-meta">
+                <p>{config.get('author', 'Research Student')} • {config.get('institution', 'University')} • {len(posts_info)} entries</p>
+                {f'<p class="subtitle">Topic: {", ".join(tag.title() for tag in tags)}</p>' if tags else ''}
     </div>
-    
-    <div class="stats">
-        <strong>{len(posts_info)} posts</strong> in this collection
-    </div>
-    
-"""
+        </div>"""
     
     if compact:
-        # Compact table-of-contents style
         html_content += """
         <ul class="posts-list">"""
-        
         for post in posts_info:
-            # Use short date format for compact mode
             short_date = post['date'].strftime('%m/%d') if hasattr(post['date'], 'strftime') else post.get('formatted_date', '').split(',')[0]
             html_content += f"""
             <li class="post-item">
@@ -1169,14 +1366,11 @@ def create_blog_index(blog_dir, posts_info, tags, config, compact=False):
                     <a href="posts/{post['html_file']}">{post['title']}</a>
                 </h2>
             </li>"""
-        
         html_content += """
         </ul>"""
     else:
-        # Regular layout with excerpts and tags
         html_content += """
         <div class="post-list">"""
-    
     for post in posts_info:
         html_content += f"""
         <article class="post-item">
@@ -1186,28 +1380,21 @@ def create_blog_index(blog_dir, posts_info, tags, config, compact=False):
             <div class="post-date">{post['formatted_date']}</div>
             <div class="post-excerpt">{post['excerpt']}</div>
             <div class="post-tags">
-"""
-        for tag in post['tags']:
-            html_content += f'<span class="tag">{tag}</span>'
-        
-        html_content += """
+                    {''.join(f'<span class="tag">{tag}</span>' for tag in post['tags'])}
             </div>
-        </article>
-"""
-        
+            </article>"""
         html_content += """
         </div>"""
     
     html_content += f"""
     </div>
-    
     <div class="footer">
         <p>Generated by Research Diary System on {datetime.now().strftime('%Y-%m-%d %H:%M')}</p>
     </div>
 </body>
 </html>"""
     
-    with open(index_html, 'w') as f:
+    with open(index_html, 'w', encoding='utf-8') as f:
         f.write(html_content)
     
     return index_html
