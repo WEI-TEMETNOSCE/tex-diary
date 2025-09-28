@@ -1,14 +1,17 @@
 # Research Diary System
 
-A latex research diary system for academics and researchers. Create, organize, and compile your daily research notes into pdfs and html. 
+A LaTeX research diary system for academics and researchers. Create, organize, and compile your daily research notes into professional PDFs and modern HTML blogs with full mathematical notation support. 
 
 ## ✨ Features
 
-- 📝 **Daily Entries** - Create diary entries with automatic date formatting
+- 📝 **Daily Entries** - Create diary entries with automatic date formatting and chronological sorting
 - 🏷️ **Smart Tagging** - Tag entries with topics (supports spaces: "machine learning", "neural networks")
-- 📚 **Collections** - Compile entries by year or by tags
+- 📚 **Collections** - Compile entries by year or by tags into professional PDFs
+- 🌐 **Modern HTML Blogs** - Generate responsive blogs with individual post pages
+- 🧮 **Advanced LaTeX Support** - 100+ custom commands with seamless HTML conversion
+- 🎨 **Minimalist Design** - Clean grey aesthetic optimized for academic content
 - 🔄 **Auto Year Detection** - Automatically uses current year
-- 📄 **LaTeX Output** - Professional PDF compilation with mathematical notation
+- 📄 **Dual Output** - Professional PDF compilation AND modern HTML blogs
 - 🎯 **One Script** - Everything in a single executable file
 - ⚡ **Simple Setup** - No complex installation required
 
@@ -63,10 +66,12 @@ diary/
 │   │   ├── style.css     # Blog styling
 │   │   └── posts/        # Individual HTML posts
 │   └── ...
-└── latex/                # Templates and styles
-    ├── templates/
-    ├── styles/
-    └── bibliography/
+└── assets/               # Templates, styles, and resources
+    ├── templates/        # LaTeX templates
+    ├── styles/           # LaTeX style files
+    ├── html_templates/   # HTML blog templates
+    ├── bib/              # Bibliography files
+    └── figures/          # Research figures and images
 ```
 
 ## 📖 Command Line Usage
@@ -154,7 +159,7 @@ diary/
 - PDF: `collections/tag1+tag2+tag3/tag1+tag2+tag3.pdf`
 - HTML: `collections/tag1+tag2+tag3/tag1+tag2+tag3.html`
 
-#### Create Blog (Individual HTML Posts) ✨ NEW!
+#### Create Blog (Individual HTML Posts) ✨ ENHANCED!
 ```bash
 # Create a blog with individual HTML posts
 ./diary blog AI machine-learning
@@ -162,15 +167,23 @@ diary/
 # Create blog for specific research topics
 ./diary blog "deep learning" transformers
 
-# Multiple topics
+# Multiple topics with full LaTeX support
 ./diary blog research-methods statistics analysis
+
+# Compact table-of-contents style (default)
+./diary blog 2025
+
+# Full card layout with excerpts
+./diary blog 2025 --full
 ```
 
 **What happens:**
-- Creates `blogs/tag1+tag2/` directory
-- Generates individual HTML files for each matching entry in `posts/` subfolder
-- Creates beautiful `index.html` with post previews and links
-- Includes responsive CSS styling for modern blog appearance
+- Creates `blogs/tag1+tag2/` directory with minimalist grey design
+- Generates individual HTML files with full LaTeX command support
+- All 100+ custom LaTeX commands work perfectly (\argmax, \KL, \E, etc.)
+- Creates beautiful responsive `index.html` with post previews
+- Includes professional CSS styling optimized for academic content
+- Automatic MathJax integration for mathematical notation
 
 **Output Structure:**
 ```
@@ -309,12 +322,15 @@ Today I worked on \textbf{attention mechanisms} in transformers.
   - Windows: Download from [pandoc.org](https://pandoc.org/installing.html)
 - **Internet connection** (for MathJax CDN)
 
-### HTML Features
+### HTML Features ✨ ENHANCED!
 - 📚 **Bibliography Support** - Automatic citation processing with `--citeproc`
-- 🎨 **Academic Styling** - Times New Roman, proper margins, justified text
-- 🧮 **Math Rendering** - MathJax for LaTeX equations
-- 📱 **Responsive Design** - Works on mobile and desktop
+- 🎨 **Minimalist Design** - Clean grey aesthetic optimized for academic content
+- 🧮 **Advanced Math Support** - 100+ LaTeX commands work seamlessly in HTML
+- ⚡ **Perfect LaTeX Integration** - \argmax, \KL, \E, \dd, \blue{}, \vv{} all supported
+- 📱 **Responsive Design** - Works beautifully on mobile and desktop
 - 🔍 **Searchable** - Full-text search with Ctrl+F
+- 🎯 **Chronological Sorting** - Entries sorted by creation time, not filename
+- 📐 **Professional Typography** - Times New Roman, proper margins, justified text
 
 ## 🛠️ Troubleshooting
 
