@@ -1,6 +1,6 @@
 # Research Diary System
 
-A streamlined LaTeX-based research diary system for creating, organizing, and compiling daily latex notes into both PDF documents and HTML blogs, with a minimal tag system for easy organization. Note: The LaTeX-to-HTML blog conversion is functional but still under refinement.
+A LaTeX-based research diary system for creating, organizing, and compiling daily latex notes into both PDF documents and HTML blogs, with a minimal tag system for easy organization. Note: The LaTeX-to-HTML blog conversion is functional but still under refinement.
 
 
 ## 🚀 Quick Start
