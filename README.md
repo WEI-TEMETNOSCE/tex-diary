@@ -1,19 +1,7 @@
 # Research Diary System
 
-A LaTeX research diary system for academics and researchers. Create, organize, and compile your daily research notes into professional PDFs and modern HTML blogs with full mathematical notation support. 
+A streamlined LaTeX-based research diary system for creating, organizing, and compiling daily latex notes into both PDF documents and HTML blogs, with a minimal tag system for easy organization. Note: The LaTeX-to-HTML blog conversion is functional but still under refinement.
 
-## ✨ Features
-
-- 📝 **Daily Entries** - Create diary entries with automatic date formatting and chronological sorting
-- 🏷️ **Smart Tagging** - Tag entries with topics (supports spaces: "machine learning", "neural networks")
-- 📚 **Collections** - Compile entries by year or by tags into professional PDFs
-- 🌐 **Modern HTML Blogs** - Generate responsive blogs with individual post pages
-- 🧮 **Advanced LaTeX Support** - 100+ custom commands with seamless HTML conversion
-- 🎨 **Minimalist Design** - Clean grey aesthetic optimized for academic content
-- 🔄 **Auto Year Detection** - Automatically uses current year
-- 📄 **Dual Output** - Professional PDF compilation AND modern HTML blogs
-- 🎯 **One Script** - Everything in a single executable file
-- ⚡ **Simple Setup** - No complex installation required
 
 ## 🚀 Quick Start
 
