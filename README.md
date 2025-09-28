@@ -47,7 +47,7 @@ or
 ```
 diary/
 ├── diary                 # Main executable script
-├── config.md             # User-friendly configuration
+├── config.yaml           # User-friendly configuration
 ├── posts/                # All diary entries
 │   └── 2025/             # Organized by year
 │       ├── 2025-01-15-research-methods.tex
@@ -213,13 +213,13 @@ Edit the tag line in your `.tex` files:
 
 ## ⚙️ Configuration
 
-Edit `config.md` to customize your setup:
+Edit `config.yaml` to customize your setup:
 
-```markdown
-**Author Name**: Your Name
-**Institution**: Your University
-**Current Year**: auto
-**Default Editor**: code
+```yaml
+author: "Your Name"
+institution: "Your University"
+current_year: "auto"
+default_editor: "code"
 ```
 
 **Key Settings:**

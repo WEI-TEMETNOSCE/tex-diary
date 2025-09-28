@@ -95,3 +95,14 @@ Thumbs.db
 
 # GitHub tools directory (local/temporary)
 github_tools/
+
+# Folders starting with underscore
+_*/
+posts/_*/
+
+# Dropbox-specific files
+.dropbox
+.dropbox.attr
+.dropbox.cache
+*conflicted copy*
+*Conflicted copy*

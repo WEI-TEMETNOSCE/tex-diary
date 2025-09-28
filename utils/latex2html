@@ -1,0 +1,1124 @@
+#!/usr/bin/env python3
+"""
+Standalone LaTeX to HTML Converter
+==================================
+
+A modular tool for converting LaTeX files to HTML with support for:
+- Custom LaTeX commands from .sty and .tex files
+- MathJax integration with custom macros
+- Figure copying with proper relative paths
+- Bibliography processing
+- Include/input directive handling
+- Template-based HTML generation
+
+Usage:
+    ./latex2html input.tex output_folder [options]
+    ./latex2html input.tex output_folder --template web_template.html --css web_template.css
+"""
+
+import argparse
+import sys
+import os
+import re
+import shutil
+import subprocess
+import yaml
+from pathlib import Path
+from datetime import datetime
+from typing import Dict, List, Set, Optional, Tuple, Any
+
+class LaTeX2HTMLConverter:
+    """Main converter class with modular components"""
+    
+    def __init__(self, verbose: bool = False):
+        self.verbose = verbose
+        self.log("LaTeX2HTML Converter initialized")
+        
+        # Component modules
+        self.command_parser = LaTeXCommandParser(verbose)
+        self.figure_handler = FigureHandler(verbose)
+        self.bibliography_handler = BibliographyHandler(verbose)
+        self.include_handler = IncludeHandler(verbose)
+        self.template_engine = TemplateEngine(verbose)
+        self.mathjax_processor = MathJaxProcessor(verbose)
+        
+    def log(self, message: str, level: str = "INFO"):
+        """Logging with optional verbosity"""
+        if self.verbose or level in ["ERROR", "WARNING"]:
+            print(f"{level}: {message}")
+    
+    def convert(self, tex_file: Path, output_dir: Path, 
+                template_file: Optional[Path] = None,
+                css_file: Optional[Path] = None,
+                copy_assets: bool = True,
+                symlink_assets: bool = False,
+                open_html: bool = False) -> Path:
+        """
+        Main conversion method
+        
+        Args:
+            tex_file: Input LaTeX file
+            output_dir: Output directory for HTML and assets
+            template_file: Optional HTML template
+            css_file: Optional CSS file
+            copy_assets: Whether to copy referenced assets
+            symlink_assets: Whether to create symlinks instead of copying assets
+            
+        Returns:
+            Path to generated HTML file
+        """
+        self.log(f"Converting {tex_file} to HTML in {output_dir}")
+        
+        # Create output directory
+        output_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Step 1: Parse LaTeX commands from all related files
+        self.log("Step 1: Parsing LaTeX commands...")
+        commands = self.command_parser.parse_commands_from_files(tex_file.parent)
+        
+        # Step 2: Handle includes and inputs
+        self.log("Step 2: Processing includes and inputs...")
+        processed_tex = self.include_handler.process_includes(tex_file, output_dir)
+        
+        # Step 3: Copy figures and assets
+        if copy_assets:
+            if symlink_assets:
+                self.log("Step 3: Creating symlinks to figures and assets...")
+            else:
+                self.log("Step 3: Copying figures and assets...")
+            self.figure_handler.copy_figures(tex_file, output_dir, use_symlinks=symlink_assets)
+        
+        # Step 4: Handle bibliography (only if citations are present)
+        self.log("Step 4: Processing bibliography...")
+        bib_files = []
+        if self._has_citations(tex_file):
+            bib_files = self.bibliography_handler.copy_bibliography_files(tex_file, output_dir)
+        else:
+            self.log("No citations found, skipping bibliography")
+        
+        # Step 5: Convert to HTML using pandoc
+        self.log("Step 5: Converting to HTML...")
+        html_file = self._convert_with_pandoc(processed_tex, output_dir, bib_files)
+        
+        # Step 6: Enhance with MathJax
+        self.log("Step 6: Enhancing with MathJax...")
+        self.mathjax_processor.enhance_html(html_file, commands)
+        
+        # Step 7: Process labels and references
+        self.log("Step 7: Processing labels and references...")
+        self.include_handler._process_labels_and_references(html_file)
+        
+        # Step 8: Apply template if provided
+        if template_file:
+            self.log("Step 8: Applying template...")
+            html_file = self.template_engine.apply_template(html_file, template_file, css_file)
+        
+        self.log(f"Conversion complete: {html_file}")
+        
+        # Open HTML file in browser if requested
+        if open_html:
+            self._open_html_file(html_file)
+        
+        return html_file
+    
+    def _open_html_file(self, html_file: Path):
+        """Open HTML file in default browser"""
+        try:
+            import webbrowser
+            import os
+            
+            # Convert to absolute path for webbrowser
+            abs_path = html_file.resolve()
+            file_url = f"file://{abs_path}"
+            
+            self.log(f"Opening HTML file in browser: {html_file.name}")
+            webbrowser.open(file_url)
+            
+        except Exception as e:
+            self.log(f"Could not open HTML file: {e}", "WARNING")
+            self.log(f"Please manually open: {html_file.resolve()}", "INFO")
+    
+    def _has_citations(self, tex_file: Path) -> bool:
+        """Check if the LaTeX file contains citations"""
+        try:
+            with open(tex_file, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            # Look for citation commands
+            citation_patterns = [
+                r'\\cite\{[^}]+\}',
+                r'\\citep\{[^}]+\}',
+                r'\\citet\{[^}]+\}',
+                r'\\citeauthor\{[^}]+\}',
+                r'\\citeyear\{[^}]+\}',
+            ]
+            
+            for pattern in citation_patterns:
+                if re.search(pattern, content):
+                    return True
+            
+            return False
+            
+        except Exception:
+            return False
+    
+    def _convert_with_pandoc(self, tex_file: Path, output_dir: Path, 
+                           bib_files: List[Path]) -> Path:
+        """Convert LaTeX to HTML using pandoc"""
+        if not shutil.which('pandoc'):
+            raise RuntimeError("pandoc not found - install with: brew install pandoc (macOS) or apt install pandoc (Linux)")
+        
+        html_file = output_dir / f"{tex_file.stem}.html"
+        original_dir = os.getcwd()
+        
+        try:
+            # Don't change directory, use absolute paths
+            # Build pandoc command with absolute paths
+            cmd = [
+                'pandoc', str(tex_file.resolve()), '-o', str(html_file.resolve()),
+                '--standalone', '--mathjax',
+                '--from', 'latex',
+                '--to', 'html5'
+            ]
+            
+            # Add bibliography files if they exist
+            for bib_file in bib_files:
+                if bib_file.exists():
+                    cmd.extend(['--citeproc', '--bibliography', str(bib_file.resolve())])
+                    break  # Only add the first valid bibliography file
+            
+            # Run pandoc
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            
+            if result.returncode != 0:
+                self.log(f"Pandoc conversion failed: {result.stderr}", "ERROR")
+                # Try without bibliography
+                if '--citeproc' in cmd:
+                    self.log("Retrying without bibliography...")
+                    cmd = [c for c in cmd if c not in ['--citeproc', '--bibliography']]
+                    result = subprocess.run(cmd, capture_output=True, text=True)
+                    
+                    if result.returncode != 0:
+                        raise RuntimeError(f"Pandoc conversion failed: {result.stderr}")
+            
+            return html_file
+            
+        finally:
+            os.chdir(original_dir)
+
+
+class LaTeXCommandParser:
+    """Parse LaTeX command definitions from .sty and .tex files"""
+    
+    def __init__(self, verbose: bool = False):
+        self.verbose = verbose
+    
+    def log(self, message: str, level: str = "INFO"):
+        if self.verbose or level in ["ERROR", "WARNING"]:
+            print(f"  CommandParser: {message}")
+    
+    def parse_commands_from_files(self, base_dir: Path) -> Dict[str, Any]:
+        """Parse all LaTeX command definitions from .sty and .tex files"""
+        commands = {
+            'simple': {},      # \cmd -> replacement
+            'one_arg': {},     # \cmd{arg} -> replacement with \g<1>
+            'two_arg': {},     # \cmd{arg1}{arg2} -> replacement with \g<1>, \g<2>
+            'operators': {}    # \DeclareMathOperator commands
+        }
+        
+        # Find all .sty and .tex files
+        sty_files = list(base_dir.glob('**/*.sty'))
+        tex_files = list(base_dir.glob('**/*.tex'))
+        all_files = sty_files + tex_files
+        
+        self.log(f"Scanning {len(all_files)} LaTeX files for command definitions...")
+        
+        total_found = 0
+        
+        for file_path in all_files:
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                
+                file_commands = self._parse_file_commands(content)
+                
+                # Merge commands
+                for cmd_type, cmd_dict in file_commands.items():
+                    commands[cmd_type].update(cmd_dict)
+                    total_found += len(cmd_dict)
+                
+            except Exception as e:
+                self.log(f"Could not parse {file_path.name}: {e}")
+        
+        self.log(f"Found {total_found} command definitions:")
+        self.log(f"  - Simple commands: {len(commands['simple'])}")
+        self.log(f"  - One-argument commands: {len(commands['one_arg'])}")
+        self.log(f"  - Two-argument commands: {len(commands['two_arg'])}")
+        self.log(f"  - Math operators: {len(commands['operators'])}")
+        
+        return commands
+    
+    def _parse_file_commands(self, content: str) -> Dict[str, Dict[str, str]]:
+        """Parse commands from a single file's content"""
+        commands = {
+            'simple': {},
+            'one_arg': {},
+            'two_arg': {},
+            'operators': {}
+        }
+        
+        # Parse \newcommand{\cmd}[n]{definition}
+        newcommand_pattern = r'\\(?:new|renew)command\{\\([^}]+)\}(?:\[(\d+)\])?\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}'
+        for match in re.finditer(newcommand_pattern, content):
+            cmd_name = match.group(1)
+            num_args = match.group(2)
+            definition = match.group(3)
+            
+            if num_args is None or num_args == '0':
+                commands['simple'][cmd_name] = definition
+            elif num_args == '1':
+                # Replace #1 with \g<1> for regex replacement
+                regex_def = definition.replace('#1', r'\g<1>')
+                commands['one_arg'][cmd_name] = regex_def
+            elif num_args == '2':
+                regex_def = definition.replace('#1', r'\g<1>').replace('#2', r'\g<2>')
+                commands['two_arg'][cmd_name] = regex_def
+        
+        # Parse \DeclareMathOperator{\cmd}{definition}
+        declaremath_pattern = r'\\DeclareMathOperator\*?\{\\([^}]+)\}\{([^}]+)\}'
+        for match in re.finditer(declaremath_pattern, content):
+            cmd_name = match.group(1)
+            definition = match.group(2)
+            # Convert to \operatorname format
+            if '*' in content[match.start():match.start()+20]:
+                commands['operators'][cmd_name] = f'\\operatorname*{{{definition}}}'
+            else:
+                commands['operators'][cmd_name] = f'\\operatorname{{{definition}}}'
+        
+        # Parse \def\cmd{definition} (simple form)
+        def_pattern = r'\\def\\([a-zA-Z]+)\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}'
+        for match in re.finditer(def_pattern, content):
+            cmd_name = match.group(1)
+            definition = match.group(2)
+            commands['simple'][cmd_name] = definition
+        
+        return commands
+
+
+class FigureHandler:
+    """Handle figure copying and path management"""
+    
+    def __init__(self, verbose: bool = False):
+        self.verbose = verbose
+    
+    def log(self, message: str, level: str = "INFO"):
+        if self.verbose or level in ["ERROR", "WARNING"]:
+            print(f"  FigureHandler: {message}")
+    
+    def copy_figures(self, tex_file: Path, output_dir: Path, use_symlinks: bool = False) -> List[Path]:
+        """Copy all figures referenced in the LaTeX file, preserving relative directory structure"""
+        copied_files = []
+        
+        # Find all figure references in the tex file
+        figure_refs = self._find_figure_references(tex_file)
+        
+        if not figure_refs:
+            self.log("No figure references found")
+            return copied_files
+        
+        self.log(f"Found {len(figure_refs)} figure references")
+        
+        # Copy each referenced figure, preserving relative directory structure
+        for fig_path in figure_refs:
+            source_file = self._resolve_figure_path(fig_path, tex_file)
+            if source_file and source_file.exists():
+                # Preserve the relative path structure from the tex file
+                # For example: assets/figures/2025/curved_reflow.png -> assets/figures/2025/curved_reflow.png
+                dest_file = output_dir / fig_path
+                dest_file.parent.mkdir(parents=True, exist_ok=True)
+                
+                if use_symlinks:
+                    # Create symlink instead of copying
+                    if dest_file.exists() or dest_file.is_symlink():
+                        dest_file.unlink()  # Remove existing file or symlink
+                    
+                    # Create relative symlink
+                    try:
+                        relative_source = os.path.relpath(source_file, dest_file.parent)
+                        dest_file.symlink_to(relative_source)
+                        copied_files.append(dest_file)
+                        self.log(f"Created symlink: {fig_path} -> {relative_source}")
+                    except OSError as e:
+                        self.log(f"Failed to create symlink for {fig_path}: {e}", "WARNING")
+                        # Fallback to copying
+                        shutil.copy2(source_file, dest_file)
+                        copied_files.append(dest_file)
+                        self.log(f"Fallback: Copied figure: {fig_path}")
+                else:
+                    # Copy file normally
+                    shutil.copy2(source_file, dest_file)
+                    copied_files.append(dest_file)
+                    self.log(f"Copied figure: {fig_path}")
+            else:
+                self.log(f"Figure not found: {fig_path}", "WARNING")
+        
+        return copied_files
+    
+    def _find_figure_references(self, tex_file: Path) -> List[str]:
+        """Find all figure references in the LaTeX file"""
+        try:
+            with open(tex_file, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            # Find various figure reference patterns
+            patterns = [
+                r'\\includegraphics(?:\[[^\]]*\])?\{([^}]+)\}',
+                r'\\input\{([^}]*\.(?:png|jpg|jpeg|pdf|eps|svg))\}',
+                r'\\epsfig\{file=([^,}]+)',
+                r'\\psfig\{file=([^,}]+)',
+            ]
+            
+            figure_refs = set()
+            for pattern in patterns:
+                matches = re.findall(pattern, content)
+                figure_refs.update(matches)
+            
+            return list(figure_refs)
+            
+        except Exception as e:
+            self.log(f"Error finding figure references: {e}", "ERROR")
+            return []
+    
+    def _resolve_figure_path(self, fig_path: str, tex_file: Path) -> Optional[Path]:
+        """Resolve a figure path relative to the tex file"""
+        # Try different possible locations
+        possible_paths = [
+            tex_file.parent / fig_path,
+            tex_file.parent / "assets" / "figures" / fig_path,
+            tex_file.parent / "figures" / fig_path,
+            tex_file.parent.parent / "assets" / "figures" / fig_path,
+        ]
+        
+        for path in possible_paths:
+            if path.exists():
+                return path
+        
+        return None
+
+
+class BibliographyHandler:
+    """Handle bibliography file copying and processing"""
+    
+    def __init__(self, verbose: bool = False):
+        self.verbose = verbose
+    
+    def log(self, message: str, level: str = "INFO"):
+        if self.verbose or level in ["ERROR", "WARNING"]:
+            print(f"  BibliographyHandler: {message}")
+    
+    def copy_bibliography_files(self, tex_file: Path, output_dir: Path) -> List[Path]:
+        """Copy bibliography files referenced in the LaTeX file, preserving relative directory structure"""
+        copied_files = []
+        
+        # Find bibliography references
+        bib_refs = self._find_bibliography_references(tex_file)
+        
+        if not bib_refs:
+            self.log("No bibliography references found")
+            return copied_files
+        
+        self.log(f"Found {len(bib_refs)} bibliography references")
+        
+        # Copy each bibliography file, preserving relative directory structure
+        for bib_path in bib_refs:
+            source_file = self._resolve_bibliography_path(bib_path, tex_file)
+            if source_file and source_file.exists():
+                # Preserve the relative path structure from the tex file
+                # For example: assets/bib/reference.bib -> assets/bib/reference.bib
+                dest_file = output_dir / bib_path
+                dest_file.parent.mkdir(parents=True, exist_ok=True)
+                
+                shutil.copy2(source_file, dest_file)
+                copied_files.append(dest_file)
+                self.log(f"Copied bibliography: {bib_path}")
+            else:
+                self.log(f"Bibliography file not found: {bib_path}", "WARNING")
+        
+        return copied_files
+    
+    def _find_bibliography_references(self, tex_file: Path) -> List[str]:
+        """Find bibliography references in the LaTeX file"""
+        try:
+            with open(tex_file, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            # Find \bibliography{...} commands
+            bib_pattern = r'\\bibliography\{([^}]+)\}'
+            matches = re.findall(bib_pattern, content)
+            
+            # Split comma-separated bibliography files
+            bib_files = []
+            for match in matches:
+                bib_files.extend([f.strip() for f in match.split(',')])
+            
+            # Add .bib extension if not present
+            bib_files = [f if f.endswith('.bib') else f'{f}.bib' for f in bib_files]
+            
+            return bib_files
+            
+        except Exception as e:
+            self.log(f"Error finding bibliography references: {e}", "ERROR")
+            return []
+    
+    def _resolve_bibliography_path(self, bib_path: str, tex_file: Path) -> Optional[Path]:
+        """Resolve a bibliography path relative to the tex file"""
+        # Try different possible locations
+        possible_paths = [
+            tex_file.parent / bib_path,
+            tex_file.parent / "assets" / "bibliography" / bib_path,
+            tex_file.parent / "assets" / "bib" / bib_path,
+            tex_file.parent / "bibliography" / bib_path,
+            tex_file.parent.parent / "assets" / "bibliography" / bib_path,
+            tex_file.parent.parent / "assets" / "bib" / bib_path,
+        ]
+        
+        for path in possible_paths:
+            if path.exists():
+                return path
+        
+        return None
+
+
+class IncludeHandler:
+    """Handle \include{} and \input{} directives"""
+    
+    def __init__(self, verbose: bool = False):
+        self.verbose = verbose
+    
+    def log(self, message: str, level: str = "INFO"):
+        if self.verbose or level in ["ERROR", "WARNING"]:
+            print(f"  IncludeHandler: {message}")
+    
+    def process_includes(self, tex_file: Path, output_dir: Path) -> Path:
+        """Process \include{} and \input{} directives and fix pandoc issues"""
+        try:
+            with open(tex_file, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            # Find all include/input references
+            include_refs = self._find_include_references(content)
+            
+            # Process each include
+            processed_content = content
+            if include_refs:
+                self.log(f"Found {len(include_refs)} include/input references")
+                for include_path in include_refs:
+                    included_content = self._read_include_file(include_path, tex_file)
+                    if included_content:
+                        try:
+                            # Replace the include command with the content
+                            input_pattern = rf'\\input\{{{re.escape(include_path)}\}}'
+                            processed_content = re.sub(input_pattern, included_content, processed_content, flags=re.DOTALL)
+                            
+                            include_pattern = rf'\\include\{{{re.escape(include_path)}\}}'
+                            processed_content = re.sub(include_pattern, included_content, processed_content, flags=re.DOTALL)
+                            self.log(f"Successfully processed include: {include_path}")
+                        except Exception as e:
+                            self.log(f"Error processing include {include_path}: {e}", "WARNING")
+                            # Continue without processing this include
+            else:
+                self.log("No include/input references found")
+            
+            # Expand custom shortcuts first
+            processed_content = self._expand_custom_shortcuts(processed_content)
+            
+            # Fix pandoc compatibility issues
+            processed_content = self._fix_pandoc_issues(processed_content)
+            
+            # Write processed file
+            processed_file = output_dir / f"{tex_file.stem}_processed.tex"
+            with open(processed_file, 'w', encoding='utf-8') as f:
+                f.write(processed_content)
+            
+            self.log(f"Created processed file: {processed_file.name}")
+            return processed_file
+            
+        except Exception as e:
+            self.log(f"Error processing includes: {e}", "ERROR")
+            return tex_file
+    
+    def _fix_pandoc_issues(self, content: str) -> str:
+        """Fix common pandoc compatibility issues"""
+        # Fix \includegraphics with decimal width specifications
+        # Replace [0.3\textwidth] with [width=0.3\textwidth]
+        content = re.sub(r'\\includegraphics\[([0-9.]+)\\textwidth\]', 
+                        r'\\includegraphics[width=\1\\textwidth]', content)
+        
+        # Fix other common width specifications
+        content = re.sub(r'\\includegraphics\[([0-9.]+)\\linewidth\]', 
+                        r'\\includegraphics[width=\1\\linewidth]', content)
+        
+        # Fix \includegraphics with just width numbers
+        content = re.sub(r'\\includegraphics\[([0-9.]+)\]', 
+                        r'\\includegraphics[width=\1\\textwidth]', content)
+        
+        # Fix \boldmath commands - convert to \mathbf for pandoc
+        content = re.sub(r'\\boldmath\s*', r'\\mathbf{', content)
+        # Note: This is a simple fix, may need more sophisticated handling
+        # Fix unmatched \mathbf{ by adding closing brace where needed
+        content = re.sub(r'\\mathbf\{([^}]*)\$([^$]*)\$([^}]*)$', r'\\mathbf{\1$\2$\3}', content, flags=re.MULTILINE)
+        
+        # Fix ctheorem environments - convert to regular theorem for pandoc
+        content = re.sub(r'\\begin\{ctheorem\}', r'\\begin{theorem}', content)
+        content = re.sub(r'\\end\{ctheorem\}', r'\\end{theorem}', content)
+        content = re.sub(r'\\begin\{cproof\}', r'\\begin{proof}', content)
+        content = re.sub(r'\\end\{cproof\}', r'\\end{proof}', content)
+        
+        # Fix algorithm environments - convert to figure for pandoc
+        content = re.sub(r'\\begin\{algorithm\}', r'\\begin{figure}', content)
+        content = re.sub(r'\\end\{algorithm\}', r'\\end{figure}', content)
+        
+        # Fix algorithmic environments - convert to verbatim for pandoc
+        content = re.sub(r'\\begin\{algorithmic\}', r'\\begin{verbatim}', content)
+        content = re.sub(r'\\end\{algorithmic\}', r'\\end{verbatim}', content)
+        
+        # Fix algorithmic commands
+        content = re.sub(r'\\REQUIRE\s*', r'REQUIRE: ', content)
+        content = re.sub(r'\\ENSURE\s*', r'ENSURE: ', content)
+        content = re.sub(r'\\STATE\s*', r'  ', content)
+        content = re.sub(r'\\FOR\{([^}]+)\}', r'FOR \1:', content)
+        content = re.sub(r'\\ENDFOR', r'ENDFOR', content)
+        content = re.sub(r'\\IF\{([^}]+)\}', r'IF \1:', content)
+        content = re.sub(r'\\ENDIF', r'ENDIF', content)
+        content = re.sub(r'\\WHILE\{([^}]+)\}', r'WHILE \1:', content)
+        content = re.sub(r'\\ENDWHILE', r'ENDWHILE', content)
+        
+        # Fix labels inside math environments - move them to proper position
+        # Pattern: \begin{align}\n\label{...} -> \begin{align}\label{...}
+        content = re.sub(r'\\begin\{align\}\s*\n\s*\\label\{([^}]+)\}', 
+                        r'\\begin{align}\n\\label{\1}', content)
+        content = re.sub(r'\\begin\{equation\}\s*\n\s*\\label\{([^}]+)\}', 
+                        r'\\begin{equation}\n\\label{\1}', content)
+        content = re.sub(r'\\begin\{eqnarray\}\s*\n\s*\\label\{([^}]+)\}', 
+                        r'\\begin{eqnarray}\n\\label{\1}', content)
+        
+        # Also handle the case where label is right after begin
+        content = re.sub(r'\\begin\{align\}\s*\\label\{([^}]+)\}', 
+                        r'\\begin{align}\n\\label{\1}', content)
+        content = re.sub(r'\\begin\{equation\}\s*\\label\{([^}]+)\}', 
+                        r'\\begin{equation}\n\\label{\1}', content)
+        content = re.sub(r'\\begin\{eqnarray\}\s*\\label\{([^}]+)\}', 
+                        r'\\begin{eqnarray}\n\\label{\1}', content)
+        
+        return content
+    
+    def _expand_custom_shortcuts(self, content: str) -> str:
+        """Expand custom LaTeX shortcuts before pandoc processing"""
+        # Expand \bb ... \ee to \begin{align*} ... \end{align*}
+        # Use word boundaries and more precise matching
+        content = re.sub(r'\\bb\b\s*\n?(.*?)\n?\s*\\ee\b', r'\\begin{align*}\1\\end{align*}', content, flags=re.DOTALL)
+        
+        # Expand \bba ... \eea to \begin{align} ... \end{align}
+        content = re.sub(r'\\bba\b\s*\n?(.*?)\n?\s*\\eea\b', r'\\begin{align}\1\\end{align}', content, flags=re.DOTALL)
+        
+        # Expand \bbb ... \eee to \begin{align} ... \end{align}
+        content = re.sub(r'\\bbb\b\s*\n?(.*?)\n?\s*\\eee\b', r'\\begin{align}\1\\end{align}', content, flags=re.DOTALL)
+        
+        return content
+    
+    def _find_include_references(self, content: str) -> List[str]:
+        """Find all \include{} and \input{} references"""
+        patterns = [
+            r'\\input\{([^}]+)\}',
+            r'\\include\{([^}]+)\}',
+        ]
+        
+        include_refs = set()
+        for pattern in patterns:
+            matches = re.findall(pattern, content)
+            include_refs.update(matches)
+        
+        return list(include_refs)
+    
+    def _read_include_file(self, include_path: str, tex_file: Path) -> Optional[str]:
+        """Read the content of an included file"""
+        # Try different possible locations
+        possible_paths = [
+            tex_file.parent / include_path,
+            tex_file.parent / f"{include_path}.tex",
+            tex_file.parent / "assets" / include_path,
+            tex_file.parent / "assets" / f"{include_path}.tex",
+        ]
+        
+        for path in possible_paths:
+            if path.exists():
+                try:
+                    with open(path, 'r', encoding='utf-8') as f:
+                        return f.read()
+                except Exception as e:
+                    self.log(f"Error reading include file {path}: {e}", "WARNING")
+        
+        self.log(f"Include file not found: {include_path}", "WARNING")
+        return None
+    
+    def _process_labels_and_references(self, html_file: Path) -> None:
+        """Process LaTeX labels and references in HTML"""
+        try:
+            with open(html_file, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            # Dictionary to store label mappings
+            labels = {}
+            counter = {'figure': 1, 'table': 1, 'equation': 1, 'theorem': 1, 'algorithm': 1, 'section': 1}
+            
+            # Process labels - find all \label{...} and assign numbers
+            def process_label(match):
+                label_name = match.group(1)
+                # Determine type based on context
+                label_type = 'item'  # default
+                if 'fig:' in label_name or 'figure:' in label_name:
+                    label_type = 'figure'
+                elif 'tab:' in label_name or 'table:' in label_name:
+                    label_type = 'table'
+                elif 'eq:' in label_name or 'equ:' in label_name or 'equation:' in label_name:
+                    label_type = 'equation'
+                elif 'thm:' in label_name or 'theorem:' in label_name:
+                    label_type = 'theorem'
+                elif 'alg:' in label_name or 'algorithm:' in label_name:
+                    label_type = 'algorithm'
+                elif 'sec:' in label_name or 'section:' in label_name:
+                    label_type = 'section'
+                
+                # Assign number
+                if label_type in counter:
+                    number = counter[label_type]
+                    counter[label_type] += 1
+                else:
+                    number = 1
+                
+                labels[label_name] = (label_type, number)
+                return f'<span id="{label_name}" class="label-{label_type}"></span>'
+            
+            # Replace \label{...} with HTML spans
+            content = re.sub(r'\\label\{([^}]+)\}', process_label, content)
+            
+            # Process references - find all \ref{...} and \eqref{...}
+            def process_ref(match):
+                ref_name = match.group(1)
+                is_eqref = match.group(0).startswith('\\eqref')
+                
+                if ref_name in labels:
+                    label_type, number = labels[ref_name]
+                    if is_eqref or label_type == 'equation':
+                        return f'<a href="#{ref_name}" class="ref-{label_type}">({number})</a>'
+                    else:
+                        return f'<a href="#{ref_name}" class="ref-{label_type}">{number}</a>'
+                else:
+                    # Reference not found, show the label name for debugging
+                    return f'<span class="ref-error">[{ref_name}]</span>'
+            
+            # Replace \ref{...} and \eqref{...} with HTML links
+            content = re.sub(r'\\(?:eq)?ref\{([^}]+)\}', process_ref, content)
+            
+            # Write back to file
+            with open(html_file, 'w', encoding='utf-8') as f:
+                f.write(content)
+            
+            self.log(f"Processed {len(labels)} labels and references")
+            
+        except Exception as e:
+            self.log(f"Error processing labels and references: {e}", "ERROR")
+
+
+class TemplateEngine:
+    """Handle HTML template application"""
+    
+    def __init__(self, verbose: bool = False):
+        self.verbose = verbose
+        self.config = self._load_config()
+    
+    def log(self, message: str, level: str = "INFO"):
+        if self.verbose or level in ["ERROR", "WARNING"]:
+            print(f"  TemplateEngine: {message}")
+    
+    def _load_config(self) -> Dict[str, Any]:
+        """Load configuration from config.yaml"""
+        config_path = Path("config.yaml")
+        if config_path.exists():
+            try:
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    return yaml.safe_load(f) or {}
+            except Exception as e:
+                self.log(f"Error loading config.yaml: {e}", "WARNING")
+        return {}
+    
+    def apply_template(self, html_file: Path, template_file: Path, 
+                      css_file: Optional[Path] = None) -> Path:
+        """Apply HTML template to the generated HTML"""
+        try:
+            # Read the generated HTML content
+            with open(html_file, 'r', encoding='utf-8') as f:
+                html_content = f.read()
+            
+            # Read the template
+            with open(template_file, 'r', encoding='utf-8') as f:
+                template_content = f.read()
+            
+            # Extract body content from HTML
+            body_match = re.search(r'<body[^>]*>(.*?)</body>', html_content, re.DOTALL)
+            body_content = body_match.group(1) if body_match else html_content
+            
+            # Extract title
+            title_match = re.search(r'<title[^>]*>(.*?)</title>', html_content)
+            title = title_match.group(1) if title_match else "Document"
+            
+            # Copy CSS file if provided
+            css_filename = 'style.css'
+            if css_file and css_file.exists():
+                # Use the name expected by the template (post.css for entry_template.html)
+                if 'entry_template' in str(template_file):
+                    css_filename = 'post.css'
+                else:
+                    css_filename = css_file.name
+                css_dest = html_file.parent / css_filename
+                shutil.copy2(css_file, css_dest)
+                self.log(f"Copied CSS file: {css_filename}")
+            
+            # Generate MathJax macros (simplified version)
+            mathjax_macros = self._generate_mathjax_macros()
+            
+            # Generate discussion forum HTML
+            discussion_forum = self._generate_discussion_forum()
+            
+            # Prepare template context
+            context = {
+                'TITLE': title,
+                'CONTENT': body_content,
+                'CSS_FILE': css_filename,
+                'MATHJAX_MACROS': mathjax_macros,
+                'DISCUSSION_FORUM': discussion_forum
+            }
+            
+            # Render template
+            final_html = self._render_template(template_content, context)
+            
+            # Write final HTML
+            final_file = html_file.parent / f"{html_file.stem}_templated.html"
+            with open(final_file, 'w', encoding='utf-8') as f:
+                f.write(final_html)
+            
+            self.log(f"Applied template: {final_file.name}")
+            return final_file
+            
+        except Exception as e:
+            self.log(f"Error applying template: {e}", "ERROR")
+            return html_file
+    
+    def _render_template(self, template_content: str, context: Dict[str, str]) -> str:
+        """Simple template renderer"""
+        result = template_content
+        
+        # Replace variables
+        for key, value in context.items():
+            placeholder = f"{{{{{key}}}}}"
+            result = result.replace(placeholder, str(value))
+        
+        return result
+    
+    def _generate_mathjax_macros(self) -> str:
+        """Generate MathJax macro definitions (simplified version)"""
+        # Basic macros that are commonly used
+        macros = [
+            '"RR": "\\\\mathbb{R}"',
+            '"CC": "\\\\mathbb{C}"',
+            '"NN": "\\\\mathbb{N}"',
+            '"PP": "\\\\mathbb{P}"',
+            '"E": "\\\\mathbb{E}"',
+            '"dd": "\\\\nabla"',
+            '"ind": "\\\\mathbb{I}"',
+            '"coloneq": "\\\\mathrel{\\\\mathop:}="',
+            '"myf": ["\\\\frac{\\\\displaystyle #1}{\\\\displaystyle #2}", 2]',
+            '"vv": ["\\\\boldsymbol{#1}", 1]',
+            '"set": ["\\\\mathcal{#1}", 1]',
+            '"funcset": ["\\\\mathcal{#1}", 1]',
+            '"opt": ["\\\\mathcal{#1}", 1]',
+            '"f": ["\\\\frac{#1}{#2}", 2]',
+            '"argmax": "\\\\operatorname*{arg\\\\,max}"',
+            '"argmin": "\\\\operatorname*{arg\\\\,min}"',
+            '"trace": "\\\\mathrm{trace}"',
+            '"diag": "\\\\mathrm{diag}"',
+            '"sign": "\\\\mathrm{sign}"',
+            '"norm": ["\\\\left\\\\lVert#1\\\\right\\\\rVert", 1]',
+            '"abs": ["\\\\left\\\\lvert#1\\\\right\\\\rvert", 1]',
+            '"df": "\\\\mathrm{d}"',
+            '"dt": "\\\\mathrm{d}t"',
+            '"dW": "\\\\mathrm{d}W"',
+            '"dno": "\\\\mathrm{d}"',
+            '"tdd": "\\\\tilde{\\\\nabla}"',
+            '"ddt": "\\\\frac{\\\\d}{\\\\d t}"',
+            '"la": "\\\\langle"',
+            '"ra": "\\\\rangle"',
+            '"cd": "\\\\mid"',
+            '"at": ["\\\\left.#1\\\\right|_{#2}", 2]',
+            '"e": ["\\\\E\\\\left[#1\\\\right]", 1]'
+        ]
+        
+        return ',\n                '.join(macros)
+    
+    def _generate_discussion_forum(self) -> str:
+        """Generate discussion forum HTML based on configuration"""
+        if not self.config.get('enable_discussion_forum', False):
+            return ""
+        
+        forum_type = self.config.get('forum_type', 'giscus')
+        
+        if forum_type == 'giscus':
+            return self._generate_giscus_forum()
+        elif forum_type == 'disqus':
+            return self._generate_disqus_forum()
+        elif forum_type == 'utterances':
+            return self._generate_utterances_forum()
+        else:
+            return ""
+    
+    def _generate_giscus_forum(self) -> str:
+        """Generate Giscus discussion forum HTML"""
+        repo = self.config.get('giscus_repo', '')
+        repo_id = self.config.get('giscus_repo_id', '')
+        category = self.config.get('giscus_category', 'General')
+        category_id = self.config.get('giscus_category_id', '')
+        
+        if not repo or not repo_id:
+            self.log("Giscus configuration incomplete: missing repo or repo_id", "WARNING")
+            return self._generate_placeholder_forum()
+        
+        mapping = self.config.get('giscus_mapping', 'pathname')
+        strict = self.config.get('giscus_strict', '0')
+        reactions_enabled = self.config.get('giscus_reactions_enabled', '1')
+        emit_metadata = self.config.get('giscus_emit_metadata', '0')
+        input_position = self.config.get('giscus_input_position', 'bottom')
+        theme = self.config.get('giscus_theme', 'light')
+        lang = self.config.get('giscus_lang', 'en')
+        
+        return f'''
+    <!-- Discussion Forum -->
+    <div class="discussion-forum">
+        <h2>Discussion</h2>
+        <p>Have questions or comments about this post? Join the discussion below!</p>
+        <script src="https://giscus.app/client.js"
+                data-repo="{repo}"
+                data-repo-id="{repo_id}"
+                data-category="{category}"
+                data-category-id="{category_id}"
+                data-mapping="{mapping}"
+                data-strict="{strict}"
+                data-reactions-enabled="{reactions_enabled}"
+                data-emit-metadata="{emit_metadata}"
+                data-input-position="{input_position}"
+                data-theme="{theme}"
+                data-lang="{lang}"
+                crossorigin="anonymous"
+                async>
+        </script>
+    </div>'''
+    
+    def _generate_disqus_forum(self) -> str:
+        """Generate Disqus discussion forum HTML"""
+        # Placeholder for Disqus implementation
+        return '''
+    <!-- Discussion Forum -->
+    <div class="discussion-forum">
+        <h2>Discussion</h2>
+        <p>Disqus integration not yet implemented. Please configure Giscus instead.</p>
+    </div>'''
+    
+    def _generate_utterances_forum(self) -> str:
+        """Generate Utterances discussion forum HTML"""
+        # Placeholder for Utterances implementation
+        return '''
+    <!-- Discussion Forum -->
+    <div class="discussion-forum">
+        <h2>Discussion</h2>
+        <p>Utterances integration not yet implemented. Please configure Giscus instead.</p>
+    </div>'''
+    
+    def _generate_placeholder_forum(self) -> str:
+        """Generate placeholder forum when Giscus is not configured"""
+        return '''
+    <!-- Discussion Forum -->
+    <div class="discussion-forum">
+        <h2>Discussion</h2>
+        <p>Discussion forum is enabled but not yet configured. To set up Giscus:</p>
+        <ol>
+            <li>Enable GitHub Discussions on your repository</li>
+            <li>Visit <a href="https://giscus.app" target="_blank">giscus.app</a> to get configuration values</li>
+            <li>Update <code>giscus_repo</code> and <code>giscus_repo_id</code> in config.yaml</li>
+            <li>See <a href="GISCUS_SETUP.md" target="_blank">GISCUS_SETUP.md</a> for detailed instructions</li>
+        </ol>
+        <p><strong>Current configuration:</strong></p>
+        <ul>
+            <li>Forum enabled: ✅</li>
+            <li>Forum type: Giscus</li>
+            <li>Repository: <em>Not configured</em></li>
+            <li>Repository ID: <em>Not configured</em></li>
+        </ul>
+    </div>'''
+
+
+class MathJaxProcessor:
+    """Handle MathJax enhancement and custom command processing"""
+    
+    def __init__(self, verbose: bool = False):
+        self.verbose = verbose
+    
+    def log(self, message: str, level: str = "INFO"):
+        if self.verbose or level in ["ERROR", "WARNING"]:
+            print(f"  MathJaxProcessor: {message}")
+    
+    def enhance_html(self, html_file: Path, commands: Dict[str, Any]) -> None:
+        """Enhance HTML with MathJax custom commands"""
+        try:
+            with open(html_file, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            # Only enhance if MathJax is present
+            if 'mathjax' not in content.lower():
+                self.log("MathJax not found in HTML, skipping enhancement")
+                return
+            
+            # Generate MathJax configuration
+            mathjax_config = self._generate_mathjax_config(commands)
+            
+            # Insert MathJax configuration
+            enhanced_content = self._insert_mathjax_config(content, mathjax_config)
+            
+            # Write enhanced HTML
+            with open(html_file, 'w', encoding='utf-8') as f:
+                f.write(enhanced_content)
+            
+            self.log("Enhanced HTML with MathJax configuration")
+            
+        except Exception as e:
+            self.log(f"Error enhancing HTML with MathJax: {e}", "ERROR")
+    
+    def _generate_mathjax_config(self, commands: Dict[str, Any]) -> str:
+        """Generate MathJax configuration from LaTeX commands"""
+        macros = []
+        
+        # Convert simple commands
+        for cmd_name, definition in commands['simple'].items():
+            clean_def = definition.replace('\\', '\\\\').replace('"', '\\"')
+            macros.append(f'"{cmd_name}": "{clean_def}"')
+        
+        # Convert one-arg commands
+        for cmd_name, definition in commands['one_arg'].items():
+            mathjax_def = definition.replace('\\g<1>', '#1').replace('\\', '\\\\').replace('"', '\\"')
+            macros.append(f'"{cmd_name}": ["{mathjax_def}", 1]')
+        
+        # Convert two-arg commands
+        for cmd_name, definition in commands['two_arg'].items():
+            mathjax_def = definition.replace('\\g<1>', '#1').replace('\\g<2>', '#2').replace('\\', '\\\\').replace('"', '\\"')
+            macros.append(f'"{cmd_name}": ["{mathjax_def}", 2]')
+        
+        # Convert operators
+        for cmd_name, definition in commands['operators'].items():
+            clean_def = definition.replace('\\', '\\\\').replace('"', '\\"')
+            macros.append(f'"{cmd_name}": "{clean_def}"')
+        
+        macros_str = ',\n                '.join(macros)
+        
+        return f"""
+<script>
+MathJax = {{
+  tex: {{
+    inlineMath: [['$', '$'], ['\\(', '\\)']],
+    displayMath: [['$$', '$$'], ['\\[', '\\]']],
+    macros: {{
+                {macros_str}
+    }},
+    processEscapes: true,
+    processEnvironments: true
+  }},
+  options: {{
+    ignoreHtmlClass: "tex2jax_ignore",
+    processHtmlClass: "tex2jax_process"
+  }}
+}};
+</script>
+"""
+    
+    def _insert_mathjax_config(self, content: str, config: str) -> str:
+        """Insert MathJax configuration into HTML"""
+        # Try to insert before existing MathJax script
+        mathjax_script_pattern = r'<script\s+src="[^"]*mathjax[^"]*"[^>]*></script>'
+        
+        if re.search(mathjax_script_pattern, content):
+            content = re.sub(mathjax_script_pattern, config + '\n\\g<0>', content)
+        else:
+            # Fallback: insert before </head>
+            if '</head>' in content:
+                content = content.replace('</head>', config + '\n</head>')
+            else:
+                # Last resort: insert at beginning
+                content = config + '\n' + content
+        
+        return content
+
+
+def main():
+    """Main entry point"""
+    parser = argparse.ArgumentParser(
+        description="Standalone LaTeX to HTML Converter",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  ./latex2html document.tex output_folder
+  ./latex2html document.tex output_folder --template template.html --css style.css
+  ./latex2html document.tex output_folder --verbose
+  ./latex2html document.tex output_folder --no-assets
+  ./latex2html document.tex output_folder --symlink-assets
+  ./latex2html document.tex output_folder --open
+        """
+    )
+    
+    parser.add_argument('tex_file', type=Path, help='Input LaTeX file')
+    parser.add_argument('output_dir', type=Path, help='Output directory')
+    parser.add_argument('--template', type=Path, help='HTML template file')
+    parser.add_argument('--css', type=Path, help='CSS file')
+    parser.add_argument('--verbose', '-v', action='store_true', help='Verbose output')
+    parser.add_argument('--no-assets', action='store_true', help='Skip copying assets')
+    parser.add_argument('--symlink-assets', action='store_true', help='Create symlinks to assets instead of copying')
+    parser.add_argument('--open', '-o', action='store_true', help='Open HTML file in browser after conversion')
+    
+    args = parser.parse_args()
+    
+    # Validate input file
+    if not args.tex_file.exists():
+        print(f"ERROR: Input file not found: {args.tex_file}")
+        sys.exit(1)
+    
+    # Create converter and convert
+    converter = LaTeX2HTMLConverter(verbose=args.verbose)
+    
+    try:
+        html_file = converter.convert(
+            tex_file=args.tex_file,
+            output_dir=args.output_dir,
+            template_file=args.template,
+            css_file=args.css,
+            copy_assets=not args.no_assets,
+            symlink_assets=args.symlink_assets,
+            open_html=args.open
+        )
+        
+        print(f"✅ Conversion successful!")
+        print(f"📄 HTML file: {html_file}")
+        print(f"📂 Output directory: {args.output_dir}")
+        
+    except Exception as e:
+        print(f"❌ Conversion failed: {e}")
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

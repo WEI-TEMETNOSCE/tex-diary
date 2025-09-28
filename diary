@@ -13,19 +13,38 @@ def get_base_dir():
 
 def load_config():
     base_dir = get_base_dir()
-    config_file = base_dir / "config.md"
+    config_file = base_dir / "config.yaml"
     defaults = {'author': 'Research Student', 'institution': 'University', 'diary_title': 'Research Diary', 'year': datetime.now().year, 'output_dir': 'collections', 'template_dir': 'assets/templates', 'default_editor': 'open'}
     if not config_file.exists(): return defaults
     config = defaults.copy()
     try:
-        with open(config_file, 'r') as f: content = f.read()
-        patterns = {'author': r'\*\*Author Name\*\*:\s*(.+)', 'institution': r'\*\*Institution\*\*:\s*(.+)', 'diary_title': r'\*\*Diary Title\*\*:\s*(.+)', 'year': r'\*\*Current Year\*\*:\s*(.+)'}
-        for key, pattern in patterns.items():
-            match = re.search(pattern, content)
-            if match:
-                value = match.group(1).strip()
-                config[key] = datetime.now().year if key == 'year' and value.lower() == 'auto' else (int(value) if key == 'year' else value)
-    except Exception as e: print(f"Warning: Failed to parse config.md: {e}")
+        import yaml
+        with open(config_file, 'r') as f:
+            yaml_config = yaml.safe_load(f)
+            if yaml_config:
+                # Map YAML keys to expected config keys
+                key_mapping = {
+                    'author': 'author',
+                    'institution': 'institution', 
+                    'diary_title': 'diary_title',
+                    'current_year': 'year',
+                    'output_directory': 'output_dir',
+                    'template_directory': 'template_dir',
+                    'default_editor': 'default_editor'
+                }
+                for yaml_key, config_key in key_mapping.items():
+                    if yaml_key in yaml_config:
+                        value = yaml_config[yaml_key]
+                        if config_key == 'year' and str(value).lower() == 'auto':
+                            config[config_key] = datetime.now().year
+                        else:
+                            config[config_key] = value
+    except ImportError:
+        print("Warning: PyYAML not installed. Install with: pip install PyYAML")
+        return defaults
+    except Exception as e: 
+        print(f"Warning: Failed to parse config.yaml: {e}")
+        return defaults
     return config
 
 def setup_assets_directory(base_dir, year):
@@ -115,7 +134,7 @@ def find_files_by_tags(tags):
     matching_files = []
     for tex_file in posts_dir.rglob("*.tex"):
         if any(file_tag in search_tags for file_tag in extract_tags_from_file(tex_file)): matching_files.append(tex_file)
-    return sorted(matching_files)
+    return sorted(matching_files, key=lambda f: f.stat().st_birthtime)
 
 def compile_latex(tex_file):
     if not shutil.which('pdflatex'): raise RuntimeError("pdflatex not found")
@@ -407,7 +426,7 @@ def cmd_compile(args):
         output_dir.mkdir(parents=True, exist_ok=True)
         year_dir = base_dir / "posts" / str(year)
         if not year_dir.exists(): raise FileNotFoundError(f"No diary entries found for year {year}")
-        entry_files = sorted(year_dir.glob(f"{year}-*.tex"))
+        entry_files = sorted(year_dir.glob(f"{year}-*.tex"), key=lambda f: f.stat().st_birthtime)
         if not entry_files: raise FileNotFoundError(f"No diary entries found in {year_dir}")
         print(f"INFO: Found {len(entry_files)} diary entries")
         setup_output_directory(output_dir)
