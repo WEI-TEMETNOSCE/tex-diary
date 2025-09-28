@@ -1693,7 +1693,8 @@ def parse_latex_commands_from_files(base_dir):
                 total_found += 1
             
             # Parse \DeclareMathOperator{\cmd}{definition}
-            declaremath_pattern = r'\\DeclareMathOperator\*?\{\\([^}]+)\}\{([^}]+)\}'
+            # Handle nested braces in definition
+            declaremath_pattern = r'\\DeclareMathOperator\*?\{\\([^}]+)\}\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}'
             for match in re.finditer(declaremath_pattern, content):
                 cmd_name = match.group(1)
                 definition = match.group(2)
@@ -1720,6 +1721,7 @@ def parse_latex_commands_from_files(base_dir):
     print(f"      - One-argument commands: {len(commands['one_arg'])}")
     print(f"      - Two-argument commands: {len(commands['two_arg'])}")
     print(f"      - Math operators: {len(commands['operators'])}")
+    
     
     return commands
 
@@ -1761,7 +1763,11 @@ def add_simple_mathjax_commands(html_file):
                     pattern = rf'\\{re.escape(cmd_name)}\{{([^}}]+)\}}'
                     matches = len(re.findall(pattern, content))
                     if matches > 0:
-                        content = re.sub(pattern, lambda m: definition, content)
+                        # Fix: properly substitute the argument into the definition
+                        def replace_func(match):
+                            arg = match.group(1)
+                            return definition.replace(r'\g<1>', arg)
+                        content = re.sub(pattern, replace_func, content)
                         replacements_made += matches
                         print(f"      ✅ Replaced \\{cmd_name}{{...}} ({matches} times)")
                 except Exception as e:
@@ -1772,7 +1778,11 @@ def add_simple_mathjax_commands(html_file):
                 pattern = rf'\\{re.escape(cmd_name)}\{{([^}}]+)\}}\{{([^}}]+)\}}'
                 matches = len(re.findall(pattern, content))
                 if matches > 0:
-                    content = re.sub(pattern, definition, content)
+                    # Fix: properly substitute both arguments into the definition
+                    def replace_func(match):
+                        arg1, arg2 = match.group(1), match.group(2)
+                        return definition.replace(r'\g<1>', arg1).replace(r'\g<2>', arg2)
+                    content = re.sub(pattern, replace_func, content)
                     replacements_made += matches
                     print(f"      ✅ Replaced \\{cmd_name}{{...}}{{...}} ({matches} times)")
             
@@ -1781,7 +1791,8 @@ def add_simple_mathjax_commands(html_file):
                 pattern = rf'\\{re.escape(cmd_name)}(?![a-zA-Z])'
                 matches = len(re.findall(pattern, content))
                 if matches > 0:
-                    content = re.sub(pattern, definition, content)
+                    # Use lambda to avoid escape issues with the replacement string
+                    content = re.sub(pattern, lambda m: definition, content)
                     replacements_made += matches
                     print(f"      ✅ Replaced \\{cmd_name} (operator) ({matches} times)")
             
@@ -1821,7 +1832,10 @@ def add_simple_mathjax_commands(html_file):
                     print(f"      ⚠️  Warning: No mathbb found in saved file despite {replacements_made} replacements")
                 
     except Exception as e:
+        import traceback
         print(f"    ⚠️  Could not process MathJax commands: {e}")
+        print(f"    📍 Error location: {traceback.format_exc().split('File')[1].split(',')[0] if 'File' in traceback.format_exc() else 'Unknown'}")
+        traceback.print_exc()
 
 def copy_bibliography_files(posts_dir, base_dir):
     """Copy bibliography files to the blog posts directory"""

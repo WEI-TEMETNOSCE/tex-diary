@@ -10,8 +10,8 @@ body {
 }
 
 h1 {
-    color: #2c3e50;
-    border-bottom: 2px solid #3498db;
+    color: #495057;
+    border-bottom: 2px solid #6c757d;
     padding-bottom: 0.5rem;
 }
 
@@ -44,12 +44,12 @@ pre {
     padding: 1rem;
     border-radius: 5px;
     overflow-x: auto;
-    border-left: 4px solid #3498db;
+    border-left: 3px solid #6c757d;
 }
 
 /* Links */
 a {
-    color: #3498db;
+    color: #6c757d;
     text-decoration: none;
 }
 
