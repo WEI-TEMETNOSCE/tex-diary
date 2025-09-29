@@ -96,6 +96,8 @@
                 "greedy": ["\\mathrm{Greedy}\\{#1\\}", 1],
                 "clickhere": ["\\href{run:#1}{Click here}", 1],
                 "e": ["\\mathbb{E}\\left[#1\\right]", 1],
+                "norm": ["\\left\\lVert#1\\right\\rVert", 1],
+                "abs": ["\\left\\lvert#1\\right\\rvert", 1],
                 "showlabels": ["", 1],
                 "myf": ["\\frac{\\displaystyle #1}{\\displaystyle #2}", 2],
                 "myp": ["\\frac{\\displaystyle \\partial #1}{\\displaystyle \\partial  #2}", 2],
@@ -127,7 +129,7 @@
 </head>
 <body>
     <p><a href="run:2025-09-28-2.tex">September 28</a></p>
-<h1 id="intro-proximal-policy-optimization">Intro: Proximal Policy
+<h1 id="lecture-proximal-policy-optimization">Lecture: Proximal Policy
 Optimization</h1>
 <h4 id="proximal-point-method">Proximal Point Method</h4>
 <p>Going beyond gradient descent, proximal point methods offer a more
@@ -144,7 +146,7 @@ class="math inline">\(D(\theta, \theta&#39;)\)</span> is a discrepancy
 or distance measure between <span class="math inline">\(\theta\)</span>
 and <span class="math inline">\(\theta&#39;\)</span>. The default choice
 is <span class="math inline">\(D(\theta, \theta&#39;) =
-\frac{1}{2}\norm{\theta - \theta&#39;}^2\)</span>, though it is common
+\frac{1}{2}\left\lVert\theta - \theta&#39;\right\rVert^2\)</span>, though it is common
 to use KL divergence in policy optimization as we show below.</p>
 <p>Each update from <span class="math inline">\(\theta^k\)</span> to
 <span class="math inline">\(\theta^{k+1}\)</span> requires solving an
@@ -233,8 +235,6 @@ class="math display">\[\mathcal C(w, r) = \min(w r, ~ \mathtt{clip}(w,
 [1-\epsilon, 1+\epsilon]) \, r ).\]</span></p>
 <p>In the following, we discuss the implications of the design choices
 for the penalty and clip functions, respectively.</p>
-
-    
-    {{DISCUSSION_FORUM}}
+   
 </body>
 </html>

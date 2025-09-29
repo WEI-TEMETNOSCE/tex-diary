@@ -18,7 +18,7 @@
 \begin{document}
 \href{run:2025-09-28.tex}{\Huge September 28} 
 
-\section{Intro: Policy Gradient} 
+\section{Lecture: Policy Gradient} 
 
 
 For simplicity, let us first 
@@ -91,15 +91,13 @@ the gradient of the expected reward with  respect to $\theta$ is
 \begin{align} 
 \nabla_\theta R(\blue{\pi_\theta}) 
 & =  \nabla_\theta \left ( \sum_{s,a} p_0(s) \blue{\pi_\theta(a \mid s)} r(a, s)  \right ) \notag \\
-& = \sum_{s,a} p_0(s) \blue{\nabla_\theta \pi_\theta(a \mid s)} r(a, s) \ant{moving $\nabla_\theta$ into sum.} \notag \\ 
+& = \sum_{s,a} p_0(s) \blue{\nabla_\theta \pi_\theta(a \mid s)} r(a, s)  \notag \\ 
 & = \sum_{s,a} p_0(s) \blue{\pi_\theta(a \mid s)}\blue{ \frac{ \nabla_\theta \pi_\theta(a \mid s) }{\pi_\theta(a \mid s)} } r(a, s) \notag \\
-& = \E_{\blue{p_{\pi_\theta}}} \left[ r(a, s) \blue{\nabla_\theta \log \pi_\theta(a \mid s)} \right], \ant{$p_{\pi_\theta}(a,s) = \pi_\theta(a|s)p_0(s)$}, \notag %\label{equ:pgrad0}
+& = \E_{\blue{p_{\pi_\theta}}} \left[ r(a, s) \blue{\nabla_\theta \log \pi_\theta(a \mid s)} \right], \notag 
 \end{align}
+%\text{~~~~//moving $\nabla_\theta$ into sum.}
+%\text{~~~~//$p_{\pi_\theta}(a,s) = \pi_\theta(a|s)p_0(s)$}, \notag %\label{equ:pgrad0}
 where the parts depending on $\theta$ are highlighted, and we use the log-derivative trick $\dd_\theta \log \pi = \nabla_\theta \pi_\theta / \pi_\theta$. This allows us to express the derivative of an expectation with respect to a distribution as the expectation of the reward weighted by $\dd_\theta \log \pi_\theta(a \mid s)$.
-
-
-
-
 
 
 \paragraph{Reward Baseline}
@@ -129,12 +127,12 @@ A positive value $A(a,s) > 0$ (respectively, negative $<0$) indicates that the a
 \paragraph{On-Policy Estimation} 
 In practice, given observations $\{s\datai\}$ drawn from $p_0$ and $a\datai \sim \pi^\theta(\cdot|s\datai)$ drawn from the ongoing policy $\pi^\theta$, 
 the gradient can be estimated by 
-\bbb \label{equ:onpolicyestimate}
+\begin{align} \label{equ:onpolicyestimate}
 \nabla_\theta  R(\pi_\theta ) 
  \approx \frac{1}{n}\sum_{i=1}^n  
 A\datai \nabla_\theta  \log  \pi_\theta (a\datai \mid s\datai),~~~~~~ 
- A\datai \defeq  A(a\datai, s\datai). 
-\eee  
+ A\datai =  A(a\datai, s\datai). 
+\end{align} 
 The gradient ascent update, also known as REINFORCE, 
 $$
 \theta\gets \theta + \epsilon \nabla_\theta  R(\pi_\theta ).  

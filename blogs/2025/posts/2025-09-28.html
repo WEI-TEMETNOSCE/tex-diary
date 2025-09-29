@@ -96,6 +96,8 @@
                 "greedy": ["\\mathrm{Greedy}\\{#1\\}", 1],
                 "clickhere": ["\\href{run:#1}{Click here}", 1],
                 "e": ["\\mathbb{E}\\left[#1\\right]", 1],
+                "norm": ["\\left\\lVert#1\\right\\rVert", 1],
+                "abs": ["\\left\\lvert#1\\right\\rvert", 1],
                 "showlabels": ["", 1],
                 "myf": ["\\frac{\\displaystyle #1}{\\displaystyle #2}", 2],
                 "myp": ["\\frac{\\displaystyle \\partial #1}{\\displaystyle \\partial  #2}", 2],
@@ -127,7 +129,7 @@
 </head>
 <body>
     <p><a href="run:2025-09-28.tex">September 28</a></p>
-<h1 id="intro-policy-gradient">Intro: Policy Gradient</h1>
+<h1 id="lecture-policy-gradient">Lecture: Policy Gradient</h1>
 <p>For simplicity, let us first consider a one-step decision-making
 process (also known as a contextual bandit).</p>
 <h4 id="problem-setup">Problem Setup</h4>
@@ -170,13 +172,12 @@ class="math display">\[\begin{align}
 &amp; =  \nabla_\theta \left ( \sum_{s,a} p_0(s) \textcolor{blue}{\pi_\theta(a \mid
 s)} r(a, s)  \right ) \notag \\
 &amp; = \sum_{s,a} p_0(s) \textcolor{blue}{\nabla_\theta \pi_\theta(a \mid s)} r(a,
-s) \ant{moving $\nabla_\theta$ into sum.} \notag \\
+s)  \notag \\
 &amp; = \sum_{s,a} p_0(s) \textcolor{blue}{\pi_\theta(a \mid s)}\textcolor{blue}{ \frac{
 \nabla_\theta \pi_\theta(a \mid s) }{\pi_\theta(a \mid s)} } r(a, s)
 \notag \\
 &amp; = \mathbb{E}_{\textcolor{blue}{p_{\pi_\theta}}} \left[ r(a, s) \textcolor{blue}{\nabla_\theta
-\log \pi_\theta(a \mid s)} \right], \ant{$p_{\pi_\theta}(a,s) =
-\pi_\theta(a|s)p_0(s)$}, \notag %\label{equ:pgrad0}
+\log \pi_\theta(a \mid s)} \right], \notag
 \end{align}\]</span> where the parts depending on <span
 class="math inline">\(\theta\)</span> are highlighted, and we use the
 log-derivative trick <span class="math inline">\(\nabla_\theta \log \pi =
@@ -218,13 +219,13 @@ class="math inline">\(p_0\)</span> and <span
 class="math inline">\(a^{(i)} \sim \pi^\theta(\cdot|s^{(i)})\)</span>
 drawn from the ongoing policy <span
 class="math inline">\(\pi^\theta\)</span>, the gradient can be estimated
-by <span class="math display">\[\begin{align*}
-b \label{equ:onpolicyestimate}
+by <span class="math display">\[\begin{align}
+\label{equ:onpolicyestimate}
 \nabla_\theta  R(\pi_\theta )
 \approx \frac{1}{n}\sum_{i=1}^n  
 A^{(i)} \nabla_\theta  \log  \pi_\theta (a^{(i)} \mid s^{(i)}),~~~~~~
-A^{(i)} \mathrel{\aban@defeq}  A(a^{(i)}, s^{(i)}).
-\end{align*}\]</span>e The gradient ascent update, also known as
+A^{(i)} =  A(a^{(i)}, s^{(i)}).
+\end{align}\]</span> The gradient ascent update, also known as
 REINFORCE, <span class="math display">\[\theta\gets \theta + \epsilon
 \nabla_\theta  R(\pi_\theta ).\]</span> Intuitively, the gradient <span
 class="math inline">\(\nabla_\theta \log \pi_\theta (a^{(i)} \mid
@@ -302,8 +303,6 @@ class="math inline">\(\pi^{\text{data}}\)</span> and the target policy
 the case of off-policy learning where training relies entirely on a
 fixed dataset with no further interaction.</p>
 </div>
-
-    
-    {{DISCUSSION_FORUM}}
+   
 </body>
 </html>
