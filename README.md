@@ -35,7 +35,7 @@ or
 
 ## 🧪 Wei Gao's Personalized Setup
 
-The repository is now pre-configured for **Wei Gao (高伟)** at **Beijing University of Chemical & Technology**. Key customizations:
+The repository is now pre-configured for **Wei Gao** at **Beijing University of Chemical & Technology**. Key customizations:
 
 - **XeLaTeX-first workflow** – Chinese/English mixed content compiles out of the box on Windows with TeX Live 2025. No additional packages are required beyond the standard distribution.
 - **Bilingual templates** – Daily entries include ready-to-fill sections for research overviews, experimental design, and reflections in both Chinese and English. Compiled yearly collections display bilingual titles and tables of contents.
