@@ -3,9 +3,9 @@
 # Edit the values below to customize your diary setup.
 
 # Personal Information
-author: "Qiang Liu"
-institution: ""
-diary_title: "Research Diary"
+author: "Wei Gao"
+institution: "Beijing University of Chemical & Technology"
+diary_title: "Wei Gao Research Diary | 高伟科研日志"
 current_year: "auto"  # Use 'auto' for current year
 
 # Directory Settings
@@ -22,7 +22,7 @@ collection_template: "latex/templates/collection/collection_template.tex"  # Tem
 default_editor: "open"  # Command to open files (macOS: 'open', Linux: 'xdg-open', or specific editor like 'code', 'vim')
 
 # Advanced Settings
-latex_engine: "pdflatex"  # LaTeX compiler to use
+latex_engine: "xelatex"  # LaTeX compiler to use (XeLaTeX recommended for Chinese/English documents)
 latex_options: "-interaction=nonstopmode -file-line-error"  # Command line options for LaTeX compilation
 cleanup_extensions: ".aux .log .out .toc .lof .lot .bbl .blg .fls .fdb_latexmk .synctex.gz .nav .snm .vrb .tmp .tmp~"  # File extensions to clean up after LaTeX compilation
 
