@@ -33,6 +33,27 @@ or
 ./diary blog 2025 # creating a blog with all posts in 2025 
 ```
 
+## 🧪 Wei Gao's Personalized Setup
+
+The repository is now pre-configured for **Wei Gao (高伟)** at **Beijing University of Chemical & Technology**. Key customizations:
+
+- **XeLaTeX-first workflow** – Chinese/English mixed content compiles out of the box on Windows with TeX Live 2025. No additional packages are required beyond the standard distribution.
+- **Bilingual templates** – Daily entries include ready-to-fill sections for research overviews, experimental design, and reflections in both Chinese and English. Compiled yearly collections display bilingual titles and tables of contents.
+- **Personal macros** – `assets/styles/diary_commands.sty` provides quick commands for bilingual annotations and blue-highlighted personal notes via `\Wei{...}`.
+
+### Windows + Sublime Text Workflow
+
+1. Ensure TeX Live 2025 is on your `PATH` (TeX executables such as `xelatex`).
+2. Open `config.yaml` and confirm `latex_engine: "xelatex"` is set (already default for this fork).
+3. Run diary commands from the integrated terminal in Sublime Text or Windows Terminal:
+   ```powershell
+   ./diary today
+   ./diary 2025
+   ```
+4. Edit the generated `.tex` file in Sublime Text and compile with your preferred build system (`xelatex` recommended). SumatraPDF can be configured for forward/inverse search as usual.
+
+> 💡 Tip: Use the `\dualheading{中文}{English}` and `\dualbullet{条目}{Item}` helpers inside diary entries for clear bilingual structure.
+
 ## 📁 Directory Structure
 
 ```
