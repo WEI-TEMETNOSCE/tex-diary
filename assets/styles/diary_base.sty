@@ -5,11 +5,34 @@
 %% This file provides everything needed for diary entries
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+%% ENCODING AND LANGUAGE SUPPORT
+\RequirePackage{iftex}
+\ifPDFTeX
+    \usepackage[utf8]{inputenc}                 % UTF-8 support for legacy engines
+    \usepackage[T1]{fontenc}                    % Improved font encoding for PDFLaTeX
+\else
+    \usepackage{fontspec}                       % Modern font selection for XeLaTeX/LuaLaTeX
+    \defaultfontfeatures{Ligatures=TeX, Scale=MatchLowercase}
+    \IfFontExistsTF{Times New Roman}{\setmainfont{Times New Roman}}{\setmainfont{Latin Modern Roman}}
+    \IfFontExistsTF{Arial}{\setsansfont{Arial}}{\setsansfont{Latin Modern Sans}}
+    \IfFontExistsTF{Consolas}{\setmonofont{Consolas}}{\setmonofont{Latin Modern Mono}}
+    \ifXeTeX
+        \usepackage{xeCJK}                      % Chinese typesetting support
+        \IfFontExistsTF{SimSun}{\setCJKmainfont{SimSun}}{%
+            \IfFontExistsTF{Songti SC}{\setCJKmainfont{Songti SC}}{\setCJKmainfont{Noto Serif CJK SC}}}
+        \IfFontExistsTF{Microsoft YaHei}{\setCJKsansfont{Microsoft YaHei}}{%
+            \IfFontExistsTF{Source Han Sans SC}{\setCJKsansfont{Source Han Sans SC}}{\setCJKsansfont{Noto Sans CJK SC}}}
+        \IfFontExistsTF{FangSong}{\setCJKmonofont{FangSong}}{%
+            \IfFontExistsTF{SimSun}{\setCJKmonofont{SimSun}}{\setCJKmonofont{Noto Sans Mono CJK SC}}}
+        \xeCJKsetup{CJKecglue={\hskip 0.1em plus 0.05em}} % Pleasant spacing between CJK and Latin text
+    \fi
+\fi
+
 %% ESSENTIAL DOCUMENT PACKAGES
 \usepackage[comma,numbers]{natbib}          % Bibliography management
 \usepackage{fancyhdr}                       % Headers and footers
-\usepackage[utf8]{inputenc}                 % Modern input encoding
 \usepackage[hmargin=2cm,vmargin=2.5cm]{geometry}  % Page margins
+\usepackage{indentfirst}                    % Indent the first paragraph after headings
 
 %% BASIC MATH PACKAGES
 \usepackage{amsmath}                        % Basic math environments
